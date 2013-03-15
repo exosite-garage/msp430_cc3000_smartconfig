@@ -15,3 +15,11 @@
 *.exe
 *.out
 *.app
+
+workspace_ccs/msp430_cc3000_smartconfig/Debug/*
+workspace_ccs/msp430_cc3000_smartconfig/Release/*
+workspace_ccs/.metadata/.plugins/*
+workspace_ccs/.metadata/.plugins/org.eclipse.core.resources/*
+workspace_ccs/.metadata/.bak*
+workspace_ccs/.metadata/.log
+
