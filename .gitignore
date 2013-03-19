@@ -22,4 +22,5 @@ workspace_ccs/.metadata/.plugins/*
 workspace_ccs/.metadata/.plugins/org.eclipse.core.resources/*
 workspace_ccs/.metadata/.bak*
 workspace_ccs/.metadata/.log
+workspace_ccs/.metadata/*
 
