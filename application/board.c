@@ -46,8 +46,6 @@
 #include "utils.h"
 
 
-
-
 extern unsigned char * ptrFtcAtStartup;
 extern volatile unsigned long SendmDNSAdvertisment;
 //#define FRAM_FORCED_RES_ADDRESS       0x1840
@@ -69,10 +67,10 @@ extern volatile unsigned long SendmDNSAdvertisment;
 void board_init()
 {
   // Stop WDT
-	WDTCTL = WDTPW + WDTHOLD;
+  WDTCTL = WDTPW + WDTHOLD;
 
-	// Init GPIO's
-	pio_init();
+  // Init GPIO's
+  pio_init();
 
   // Setup sensors hooked up to the board (if any)
   setupSensors();
@@ -150,9 +148,9 @@ void pio_init()
     
     // Initialize LEDs
     initLEDs();
-    
-
 }
+
+
 //*****************************************************************************
 //
 //! ReadWlanInterruptPin
@@ -164,11 +162,11 @@ void pio_init()
 //! \brief  return wlan interrup pin
 //
 //*****************************************************************************
-
 long ReadWlanInterruptPin(void)
 {
     return (P2IN & BIT3);
 }
+
 
 //*****************************************************************************
 //
@@ -181,14 +179,13 @@ long ReadWlanInterruptPin(void)
 //! \brief  Nonr
 //
 //*****************************************************************************
-
-
 void WlanInterruptEnable()
 {
     __bis_SR_register(GIE);
     P2IES |= BIT3;
     P2IE |= BIT3;
 }
+
 
 //*****************************************************************************
 //
@@ -201,8 +198,6 @@ void WlanInterruptEnable()
 //! \brief  Nonr
 //
 //*****************************************************************************
-
-
 void WlanInterruptDisable()
 {
     P2IE &= ~BIT3;
@@ -220,7 +215,6 @@ void WlanInterruptDisable()
 //! \brief  void
 //
 //*****************************************************************************
-
 void WriteWlanPin( unsigned char val )
 {
     if (val)
@@ -232,6 +226,7 @@ void WriteWlanPin( unsigned char val )
         P4OUT &= ~BIT1;
     }
 }
+
 
 //*****************************************************************************
 //
@@ -258,20 +253,34 @@ void unsolicicted_events_timer_init(void)
     TA1CCTL0 |= CCIE;
 }
 
+
+//*****************************************************************************
+//
+//! mDNS_packet_trigger_timer_enable
+//!
+//!  \param  None
+//!
+//!  \return none
+//!
+//!  \brief  Enable the Timer A0 to trigger mDNS packet
+//
+//*****************************************************************************
 void mDNS_packet_trigger_timer_enable(void)
 {
-    TA0CCTL0 &= ~CCIE;                         // TACCR0 interrupt enabled
-		TA0CTL |= MC_0;
-    // The timer clock is ~10KHz. Dividing it by 8 and than by 8 gives us clock of 156.25 Hz
-    TA0EX0 = TAIDEX_7;
-		 // We want to wakeup each 30 sec which is  0x1248 @ 156.25 Hz
-    TA0CCR0 = 0x1248;
+  TA0CCTL0 &= ~CCIE;                         // TACCR0 interrupt enabled
+  TA0CTL |= MC_0;
+  // The timer clock is ~10KHz. Dividing it by 8 and than by 8 gives us clock of 156.25 Hz
+  TA0EX0 = TAIDEX_7;
+  // We want to wakeup each 30 sec which is  0x1248 @ 156.25 Hz
+  TA0CCR0 = 0x1248;
 		
-  	// run the timer from ACLCK, and enable interrupt of Timer A0
-		TA0CTL |= (TASSEL_1 + MC_1 + TACLR  + ID_3);
+  // run the timer from ACLCK, and enable interrupt of Timer A0
+  TA0CTL |= (TASSEL_1 + MC_1 + TACLR  + ID_3);
 		
-    TA0CCTL0 |= CCIE;
+  TA0CCTL0 |= CCIE;
 }
+
+
 //*****************************************************************************
 //
 //! unsolicicted_events_timer_init
@@ -363,6 +372,7 @@ void StopDebounceTimer()
     TB0CCTL0 &= ~CCIE;                          // TACCR0 interrupt enabled
 }
 
+
 //*****************************************************************************
 //
 //! Initialize LEDs
@@ -383,6 +393,7 @@ void initLEDs()
     PJDIR |= (BIT0 + BIT1 + BIT2 + BIT3);
     P3DIR |= (BIT4 + BIT5 + BIT6 + BIT7);
 }
+
 
 //*****************************************************************************
 //
@@ -426,6 +437,7 @@ void turnLedOn(char ledNum)
     }
 }
 
+
 //*****************************************************************************
 //
 //! Turn LED Off
@@ -467,6 +479,7 @@ void turnLedOff(char ledNum)
         break;
     }
 }
+
 
 //*****************************************************************************
 //
@@ -511,6 +524,7 @@ void toggleLed(char ledNum)
     }
 }
 
+
 //*****************************************************************************
 //
 //! \brief  check if Smart Config flag was set
@@ -528,6 +542,7 @@ long IsFTCflagSet()
 
 }
 
+
 //*****************************************************************************
 //
 //! \brief  set Smart Config flag when S2 was pressed
@@ -542,6 +557,7 @@ void SetFTCflag()
 {  
    *ptrFtcAtStartup = SMART_CONFIG_SET;                              //  set Smart Config flag  
 }
+
 
 //*****************************************************************************
 //
@@ -571,15 +587,14 @@ void ClearFTCflag()
 //*****************************************************************************
 void DissableSwitch()
 {  
-            // disable switch interrupt
-            
-            
-            P4IFG &= ~BIT0;                // Clear P4.0 IFG
-            P4IE &= ~BIT0;               // P4.0 interrupt disabled
-            P4IFG &= ~BIT0;                // Clear P4.0 IFG
+  // disable switch interrupt
+  P4IFG &= ~BIT0;                // Clear P4.0 IFG
+  P4IE &= ~BIT0;               // P4.0 interrupt disabled
+  P4IFG &= ~BIT0;                // Clear P4.0 IFG
 
-                P4IFG = 0;
+  P4IFG = 0;
 }
+
 
 //*****************************************************************************
 //
@@ -593,13 +608,12 @@ void DissableSwitch()
 //*****************************************************************************
 void RestoreSwitch()
 {  
-
-    // Restore Switch Interrupt
-    P4IFG &= ~BIT0;                 // Clear P4.0 IFG
-    P4IE |= BIT0;                   // P4.0 interrupt enabled
-    P4IFG &= ~BIT0;                 // Clear P4.0 IFG
-
+  // Restore Switch Interrupt
+  P4IFG &= ~BIT0;                 // Clear P4.0 IFG
+  P4IE |= BIT0;                   // P4.0 interrupt enabled
+  P4IFG &= ~BIT0;                 // Clear P4.0 IFG
 }
+
 
  //*****************************************************************************
 //
@@ -612,14 +626,13 @@ void RestoreSwitch()
 //
 //*****************************************************************************
 long switchIsPressed()
-{  
-          
-if(!(P1IN & BIT3))
-  return 1;
+{
+  if(!(P1IN & BIT3))
+    return 1;
  
-return 0;
-
+  return 0;
 }
+
 
 //*****************************************************************************
 //
@@ -633,9 +646,9 @@ return 0;
 //*****************************************************************************    
 void restartMSP430()
 {
-   
-    PMMCTL0 |= PMMSWPOR;
+  PMMCTL0 |= PMMSWPOR;
         
-    // This function will never exit since it forces a complete
-    // restart of the MSP430.    
+  // This function will never exit since it forces a complete
+  // restart of the MSP430.
 }
+

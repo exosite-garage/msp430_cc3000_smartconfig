@@ -152,6 +152,7 @@ void main(void)
 
       //unsolicicted_events_timer_disable();
 
+      hci_unsolicited_event_handler();
       if (0 == cloud_status) { //check to see if we have a valid connection
         loop_time = 1000;
         if (Exosite_Read("led7_ctrl", pbuf, EXO_BUFFER_SIZE)) {
