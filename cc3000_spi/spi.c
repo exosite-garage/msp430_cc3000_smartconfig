@@ -82,49 +82,49 @@ typedef struct _btspi_hdr
 
 
 
-#define 	eSPI_STATE_POWERUP 				 (0)
-#define 	eSPI_STATE_INITIALIZED  		 (1)
-#define 	eSPI_STATE_IDLE					 (2)
-#define 	eSPI_STATE_WRITE_IRQ	   		 (3)
-#define 	eSPI_STATE_WRITE_FIRST_PORTION   (4)
-#define 	eSPI_STATE_WRITE_EOT			 (5)
-#define 	eSPI_STATE_READ_IRQ				 (6)
-#define 	eSPI_STATE_READ_FIRST_PORTION	 (7)
-#define 	eSPI_STATE_READ_EOT				 (8)
+#define  eSPI_STATE_POWERUP               (0)
+#define  eSPI_STATE_INITIALIZED           (1)
+#define  eSPI_STATE_IDLE                  (2)
+#define  eSPI_STATE_WRITE_IRQ             (3)
+#define  eSPI_STATE_WRITE_FIRST_PORTION   (4)
+#define  eSPI_STATE_WRITE_EOT             (5)
+#define  eSPI_STATE_READ_IRQ              (6)
+#define  eSPI_STATE_READ_FIRST_PORTION    (7)
+#define  eSPI_STATE_READ_EOT              (8)
 
 
-#define SPI_BUFFER_SIZE						 (200) //HAR TODO - original size options were 100 and 1700... if WLAN acts unstable, may need to increase this
+#define SPI_BUFFER_SIZE                 (200) //HAR TODO - original size options were 100 and 1700... if WLAN acts unstable, may need to increase this
 
 typedef struct
 {
-	unsigned long ulPioPortAddress;
-	unsigned long ulPioSpiPort;
-	unsigned long ulPioSpiCs;
-	unsigned long ulPortInt;
-	unsigned long ulPioSlEnable;
-	
-	unsigned long uluDmaPort;
-	unsigned long uluDmaRxChannel;
-	unsigned long uluDmaTxChannel;
-	
-	unsigned long ulSsiPort;
-	unsigned long ulSsiPortAddress;
-	unsigned long ulSsiTx;
-	unsigned long ulSsiRx;
-	unsigned long ulSsiClck;
-	unsigned long ulSsiPortInt;
+  unsigned long ulPioPortAddress;
+  unsigned long ulPioSpiPort;
+  unsigned long ulPioSpiCs;
+  unsigned long ulPortInt;
+  unsigned long ulPioSlEnable;
+
+  unsigned long uluDmaPort;
+  unsigned long uluDmaRxChannel;
+  unsigned long uluDmaTxChannel;
+
+  unsigned long ulSsiPort;
+  unsigned long ulSsiPortAddress;
+  unsigned long ulSsiTx;
+  unsigned long ulSsiRx;
+  unsigned long ulSsiClck;
+  unsigned long ulSsiPortInt;
 }tSpiHwConfiguration;
 
 typedef struct
 {
-	gcSpiHandleRx  SPIRxHandler;
+  gcSpiHandleRx  SPIRxHandler;
 
-	unsigned short usTxPacketLength;
-	unsigned short usRxPacketLength;
-	unsigned long  ulSpiState;
-	unsigned char *pTxPacket;
-	unsigned char *pRxPacket;
-	tSpiHwConfiguration	sHwSettings;
+  unsigned short usTxPacketLength;
+  unsigned short usRxPacketLength;
+  unsigned long  ulSpiState;
+  unsigned char *pTxPacket;
+  unsigned char *pRxPacket;
+  tSpiHwConfiguration	sHwSettings;
 }tSpiInformation;
 
 
@@ -187,7 +187,7 @@ __no_init unsigned char wlan_tx_buffer[SPI_BUFFER_SIZE];
 void
 SpiCleanGPIOISR(void)
 {
-	P2IFG &= ~BIT3;
+  P2IFG &= ~BIT3;
 }
  
 
@@ -266,23 +266,19 @@ SpiClose(void)
 void 
 SpiOpen(gcSpiHandleRx pfRxHandler)
 {
-	sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
+  sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
 
-	sSpiInformation.SPIRxHandler = pfRxHandler;
-	sSpiInformation.usTxPacketLength = 0;
-	sSpiInformation.pTxPacket = NULL;
-	sSpiInformation.pRxPacket = (unsigned char *)spi_buffer;
-	sSpiInformation.usRxPacketLength = 0;
-
-
-
-	//
-	// Enable interrupt on the GPIOA pin of WLAN IRQ
-	//
-	tSLInformation.WlanInterruptEnable();
+  sSpiInformation.SPIRxHandler = pfRxHandler;
+  sSpiInformation.usTxPacketLength = 0;
+  sSpiInformation.pTxPacket = NULL;
+  sSpiInformation.pRxPacket = (unsigned char *)spi_buffer;
+  sSpiInformation.usRxPacketLength = 0;
+  //
+  // Enable interrupt on the GPIOA pin of WLAN IRQ
+  //
+  tSLInformation.WlanInterruptEnable();
 }
 
- 
 
 //*****************************************************************************
 //
@@ -302,20 +298,20 @@ SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
     // workaround for first transaction
     //
     ASSERT_CS();
-	
+
     // Assuming we are running on 24 MHz ~50 micro delay is 1200 cycles;
     __delay_cycles(1200);
-	
+
     // SPI writes first 4 bytes of data
     SpiWriteDataSynchronous(ucBuf, 4);
 
     __delay_cycles(1200);
-	
+
     SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
 
     // From this point on - operate in a regular way
     sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
-    
+
     DEASSERT_CS();
 
     return(0);
@@ -405,7 +401,7 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 	//
 
 	{
-          volatile unsigned long vDelay = 3 * 0xAAAAA;
+          volatile unsigned long vDelay = 3 * 0xAAAA; //0xAAAAA;
           while (eSPI_STATE_IDLE != sSpiInformation.ulSpiState) {           
             if (!vDelay--) {
             	errorHandler(ERROR_SPI_TIMEOUT);  //TODO - Exosite workaround - can't have infinit loops with real HW folks!

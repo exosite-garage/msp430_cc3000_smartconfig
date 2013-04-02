@@ -46,7 +46,6 @@
 #define SPI_IRQ_PORT_DIR   P2DIR
 #define SPI_IRQ_PORT_SEL   P2SEL0
 #define SPI_IRQ_PORT_SEL2  P2SEL1
-#define SPI_IRQ_PIN        BIT3
 
 #define WLAN_EN_PORT_OUT   P4OUT
 #define WLAN_EN_PORT_DIR   P4DIR

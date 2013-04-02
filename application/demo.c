@@ -49,7 +49,7 @@
 
 
 // local defines
-#define WRITE_INTERVAL 10
+#define WRITE_INTERVAL 5
 #define EXO_BUFFER_SIZE 200 //reserve 200 bytes for packing all our write data into a FRAM buffer
 
 #ifdef __MSP430FR5739__
@@ -152,37 +152,47 @@ void main(void)
 
       //unsolicicted_events_timer_disable();
 
-      hci_unsolicited_event_handler();
       if (0 == cloud_status) { //check to see if we have a valid connection
-        loop_time = 1000;
-        if (Exosite_Read("led7_ctrl", pbuf, EXO_BUFFER_SIZE)) {
-          if (!strncmp(pbuf, "0", 1)) turnLedOff(LED7);
-        else if (!strncmp(pbuf, "1", 1)) turnLedOn(LED7);
-        }
-        unsolicicted_events_timer_init();
-        if (loopCount++ >= WRITE_INTERVAL) {
-            unsigned char sensorCount = 0;
-            int value;
-            char strRead[6]; //largest value of an int in ascii is 5 + null terminate
-            loopCount = 0; //reset loop count
+        loop_time = 2000;
 
-            for (sensorCount = 0; sensorCount < SENSOR_END; sensorCount++) {
-              value = getSensorResult(sensorCount);                                       //get the sensor reading
-              itoa(value, strRead, 10);                           //convert to a string
-              unsolicicted_events_timer_init();
-              //for each reading / data source (alias), we need to build the string "alias=value" (must be URL encoded)
-              //this is all just an iteration of, for example, Exosite_Write("mydata=hello_world",18);
-              memcpy(pbuf,&sensorNames[sensorCount][0],strlen(&sensorNames[sensorCount][0]));  //copy alias name into buffer
-              pbuf += strlen(&sensorNames[sensorCount][0]);
-              *pbuf++ = 0x3d;                                             //put an '=' into buffer
-              memcpy(pbuf,strRead, strlen(strRead));                      //copy value into buffer
-              pbuf += strlen(strRead);
-              *pbuf++ = 0x26;                                             //put an '&' into buffer, the '&' ties successive alias=val pairs together
-            }
-            pbuf--;                                                                       //back out the last '&'
-            Exosite_Write(exo_buffer,(pbuf - exo_buffer - 1));    //write all sensor values to the cloud
+        loopCount = 0;
+        while (loopCount++ <= WRITE_INTERVAL)
+        {
+          if (Exosite_Read("led7_ctrl", pbuf, EXO_BUFFER_SIZE))
+          {
+            if (!strncmp(pbuf, "0", 1))
+              turnLedOff(LED7);
+            else if (!strncmp(pbuf, "1", 1))
+              turnLedOn(LED7);
           }
-        } else {
+
+          hci_unsolicited_event_handler();
+          unsolicicted_events_timer_init();
+          busyWait(loop_time);        //delay before looping again
+        }
+
+        unsolicicted_events_timer_init();
+        unsigned char sensorCount = 0;
+        int value;
+        char strRead[6]; //largest value of an int in ascii is 5 + null terminate
+
+        for (sensorCount = 0; sensorCount < SENSOR_END; sensorCount++) {
+          value = getSensorResult(sensorCount);                                       //get the sensor reading
+          itoa(value, strRead, 10);                           //convert to a string
+          unsolicicted_events_timer_init();
+          //for each reading / data source (alias), we need to build the string "alias=value" (must be URL encoded)
+          //this is all just an iteration of, for example, Exosite_Write("mydata=hello_world",18);
+          memcpy(pbuf,&sensorNames[sensorCount][0],strlen(&sensorNames[sensorCount][0]));  //copy alias name into buffer
+          pbuf += strlen(&sensorNames[sensorCount][0]);
+          *pbuf++ = 0x3d;                                             //put an '=' into buffer
+          memcpy(pbuf,strRead, strlen(strRead));                      //copy value into buffer
+          pbuf += strlen(strRead);
+          *pbuf++ = 0x26;                                             //put an '&' into buffer, the '&' ties successive alias=val pairs together
+        }
+        pbuf--;                                                                       //back out the last '&'
+        Exosite_Write(exo_buffer,(pbuf - exo_buffer - 1));    //write all sensor values to the cloud
+
+      } else {
           //we don't have a good connection yet - we keep retrying to authenticate
           cloud_status = Exosite_ReInit();
           if (0 != cloud_status) loop_time = 30000; //delay 30 seconds before retrying...

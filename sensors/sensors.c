@@ -46,7 +46,7 @@ const char sensorNames[10][11] = {
                                 "acc_x",
                                 "acc_y",
                                 "acc_z",
-                                "adc15"
+                                "adc_15"
                                 };
 
 int getSensorResult(unsigned char sensorNum)
