@@ -46,6 +46,7 @@
 #include "utils.h"
 #include "spi.h"
 #include "demo_config.h"
+#include "uart.h"
 
 
 // local defines
@@ -128,7 +129,8 @@ void main(void)
 
   // Initialize hardware and interfaces
   board_init();
-
+  initUart();
+  sendString("System init : \r\n");
   // Main Loop
   while (1)
   {
@@ -139,12 +141,12 @@ void main(void)
       // Clear flag
       ClearFTCflag();
       unsetCC3000MachineState(CC3000_ASSOC);
-
+      sendString("==Start SmartConfig==\r\n");
       // Start the Smart Config Process
       StartSmartConfig();
       runSmartConfig = 0;
     }
-
+    sendString("==Check WiFi Connected==\r\n");
     // If connectivity is good, run the primary functionality
     if(checkWiFiConnected())
     {
@@ -156,6 +158,7 @@ void main(void)
         loop_time = 2000;
 
         loopCount = 0;
+
         while (loopCount++ <= WRITE_INTERVAL)
         {
           if (Exosite_Read("led7_ctrl", pbuf, EXO_BUFFER_SIZE))
@@ -168,6 +171,7 @@ void main(void)
 
           hci_unsolicited_event_handler();
           unsolicicted_events_timer_init();
+          sendString("== Exosite Read==\r\n");
           busyWait(loop_time);        //delay before looping again
         }
 
@@ -191,9 +195,10 @@ void main(void)
         }
         pbuf--;                                                                       //back out the last '&'
         Exosite_Write(exo_buffer,(pbuf - exo_buffer - 1));    //write all sensor values to the cloud
-
+        sendString("== Exosite Write==\r\n");
       } else {
           //we don't have a good connection yet - we keep retrying to authenticate
+          sendString("== Exosite Re-init==\r\n");
           cloud_status = Exosite_ReInit();
           if (0 != cloud_status) loop_time = 30000; //delay 30 seconds before retrying...
         }
@@ -236,10 +241,12 @@ checkWiFiConnected(void)
     {
       // Smart Config not set, check whether we have an SSID
       // from the assoc terminal command. If not, use fixed SSID.
+        sendString("== ConnectUsingSSID==\r\n");
         ConnectUsingSSID(SSID);
     }
     unsolicicted_events_timer_init();
     // Wait until connection is finished
+    sendString("== Wait until connection is finished==\r\n");
     while (!(currentCC3000State() & CC3000_ASSOC))
     {
       __delay_cycles(100);
@@ -264,6 +271,7 @@ checkWiFiConnected(void)
 
     if (obtainIpInfoFlag == FALSE)
     {
+      sendString("== CC3000_IP_ALLOC_IND==\r\n");
       obtainIpInfoFlag = TRUE;             // Set flag so we don't constantly turn the LED on
       turnLedOn(CC3000_IP_ALLOC_IND);
       ipInfoFlagSet = 1;
@@ -288,6 +296,7 @@ checkWiFiConnected(void)
     if( ipInfoFlagSet == 1)
     {
       // Initialize an Exosite connection
+      sendString("== Exosite init ==\r\n");
       cloud_status = Exosite_Init();
       ipInfoFlagSet = 0;
     }
