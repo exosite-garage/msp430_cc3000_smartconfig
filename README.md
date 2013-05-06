@@ -21,13 +21,14 @@ Tested with:
 * IDE and Toolchain: Code Composer v5 (Version: 5.3) for Windows
 * MSP430 Compiler 4.1.2
 * FRAM development kit MSP-EXP430FR5739 (5/20/2011 seal date)
-* LS Research CC3000 module - TiWi-SL Rev 2
+* LS Research CC3000 module - TiWi-SL Rev 2 or
+  muRata CC3000 module - LBWA1ZZVK7 Rev 2.0
 
 ================================================================================
 Quick Start
 ================================================================================
-1) Download CC3000 patch Program (swrc264c.zip) from 
-http://processors.wiki.ti.com/index.php/CC3000_Wi-Fi_Downloads select 
+1) Download CC3000 patch Program from 
+http://processors.wiki.ti.com/index.php/CC3000_Wi-Fi_Downloads#CC3000.2BMSP430_FRAM select 
 MSP430FRAM+CC3000 Patch Programmer. You will need a TI account to get the file.
 
 2) Extrac the patch programmer and install it. Refer 
@@ -48,7 +49,7 @@ MSP430FRAM+CC3000 Patch Programmer. You will need a TI account to get the file.
   (e.g. at C:\projects\msp430_cc3000_smartconfig\workspace_ccs)
   
 8) Compile to ensure the tools and source code work OK (note, the project
-   currently has 88 info items, 0 warnings, 0 errors)
+   currently has 100 info items, 0 warnings, 0 errors)
    
 9) Open a browser and go to https://ti.exosite.com and sign-up if you don't
    already have an account
@@ -69,7 +70,7 @@ MSP430FRAM+CC3000 Patch Programmer. You will need a TI account to get the file.
 
 13) Verify data in Exosite Portals is being reported to the data sources.  Data
     is written roughly every 10 seconds to all data sources, while data is read
-    every second.
+    every two seconds.
     
 14) Verify the kit can receive data from Exosite - go to the /manage/data page 
     and click on the LED7 Control data source and enter a '0' in the Write Data 
@@ -90,6 +91,10 @@ MSP430FRAM+CC3000 Patch Programmer. You will need a TI account to get the file.
 ================================================================================
 Release Info
 ================================================================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Release 2013-05-06
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--) Add WDT and update CC3000 patch program
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Release 2013-03-06
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
