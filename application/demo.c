@@ -122,7 +122,7 @@ char serverErrorCode = 0;
 void main(void)
 {
   unsigned char loopCount = 0;
-  int loop_time = 1000;
+  int loop_time = 2000;
 
   ulCC3000Connected = 0;
   SendmDNSAdvertisment = 0;
@@ -147,6 +147,7 @@ void main(void)
       runSmartConfig = 0;
     }
     sendString("==Check WiFi Connected==\r\n");
+    WDTCTL = WDT_ARST_1000;
     // If connectivity is good, run the primary functionality
     if(checkWiFiConnected())
     {
@@ -161,6 +162,7 @@ void main(void)
 
         while (loopCount++ <= WRITE_INTERVAL)
         {
+          WDTCTL = WDT_ARST_1000;
           if (Exosite_Read("led7_ctrl", pbuf, EXO_BUFFER_SIZE))
           {
             if (!strncmp(pbuf, "0", 1))
@@ -172,6 +174,7 @@ void main(void)
           hci_unsolicited_event_handler();
           unsolicicted_events_timer_init();
           sendString("== Exosite Read==\r\n");
+          WDTCTL = WDTPW + WDTHOLD;
           busyWait(loop_time);        //delay before looping again
         }
 
@@ -179,7 +182,7 @@ void main(void)
         unsigned char sensorCount = 0;
         int value;
         char strRead[6]; //largest value of an int in ascii is 5 + null terminate
-
+        WDTCTL = WDT_ARST_1000;
         for (sensorCount = 0; sensorCount < SENSOR_END; sensorCount++) {
           value = getSensorResult(sensorCount);                                       //get the sensor reading
           itoa(value, strRead, 10);                           //convert to a string
@@ -194,10 +197,12 @@ void main(void)
           *pbuf++ = 0x26;                                             //put an '&' into buffer, the '&' ties successive alias=val pairs together
         }
         pbuf--;                                                                       //back out the last '&'
+        WDTCTL = WDT_ARST_1000;
         Exosite_Write(exo_buffer,(pbuf - exo_buffer - 1));    //write all sensor values to the cloud
         sendString("== Exosite Write==\r\n");
       } else {
           //we don't have a good connection yet - we keep retrying to authenticate
+    	  WDTCTL = WDTPW + WDTHOLD;
           sendString("== Exosite Re-init==\r\n");
           cloud_status = Exosite_ReInit();
           if (0 != cloud_status) loop_time = 30000; //delay 30 seconds before retrying...
@@ -205,7 +210,7 @@ void main(void)
 
         unsolicicted_events_timer_init();
       }
-
+      WDTCTL = WDTPW + WDTHOLD;
       // TODO - make this a sleep instead of busy wait
       busyWait(loop_time);        //delay before looping again
     }
@@ -249,6 +254,7 @@ checkWiFiConnected(void)
     sendString("== Wait until connection is finished==\r\n");
     while (!(currentCC3000State() & CC3000_ASSOC))
     {
+      WDTCTL = WDT_ARST_1000;
       __delay_cycles(100);
 
       // Handle any un-solicited event if required - the function will get triggered
@@ -263,7 +269,7 @@ checkWiFiConnected(void)
 
   // Handle un-solicited events - will be triggered few times per second
   hci_unsolicited_event_handler();
-
+  WDTCTL = WDTPW + WDTHOLD;
   // Check if we are in a connected state.  If so, set flags and LED
   if(currentCC3000State() & CC3000_IP_ALLOC)
   {
@@ -280,6 +286,7 @@ checkWiFiConnected(void)
 
     if (obtainIpInfoFlag == TRUE)
     {
+    	WDTCTL = WDT_ARST_1000;
       //If Smart Config was performed, we need to send complete notification to the configure (Smart Phone App)
       if (ConnectUsingSmartConfig==1)
       {
@@ -292,7 +299,7 @@ checkWiFiConnected(void)
 
       unsolicicted_events_timer_init();
     }
-
+    WDTCTL = WDTPW + WDTHOLD;
     if( ipInfoFlagSet == 1)
     {
       // Initialize an Exosite connection
