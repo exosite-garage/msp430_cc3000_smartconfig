@@ -44,17 +44,17 @@
 #define META_MARK_SIZE            8
 #define META_UUID_SIZE            12
 #define META_PAD1_SIZE            4
-#define META_RSVD_SIZE            56
+#define META_RSVD_SIZE            48          // TODO - flash block size is 128 - either make MFR these 48 RSVD bytes or instrument flash routine to use next block for MFR
 #define META_MFR_SIZE             128
 typedef struct {
-  char cik[META_CIK_SIZE];                   // our client interface key
-  char server[META_SERVER_SIZE];             // ip address of m2.exosite.com (not using DNS at this stage)
-  char pad0[META_PAD0_SIZE];                 // pad 'server' to 8 bytes
-  char mark[META_MARK_SIZE];                 // watermark
-  char uuid[META_UUID_SIZE];                 // UUID in ascii
-  char pad1[META_PAD1_SIZE];                 // pad 'uuid' to 16 bytes
-  char rsvd[META_RSVD_SIZE];                 // reserved space - pad to ensure mfr is at end of RDK_META_SIZE
-  char mfr[META_MFR_SIZE];                   // manufacturer data structure
+    char cik[META_CIK_SIZE];                   // our client interface key
+    char server[META_SERVER_SIZE];             // ip address of m2.exosite.com (not using DNS at this stage)
+    char pad0[META_PAD0_SIZE];                 // pad 'server' to 8 bytes
+    char mark[META_MARK_SIZE];                 // watermark
+    char uuid[META_UUID_SIZE];                 // UUID in ascii
+    char pad1[META_PAD1_SIZE];                 // pad 'uuid' to 16 bytes
+    char rsvd[META_RSVD_SIZE];                 // reserved space - pad to ensure mfr is at end of RDK_META_SIZE
+    char mfr[META_MFR_SIZE];                   // manufacturer data structure
 } exosite_meta;
 
 #define EXOMARK "exosite!"
@@ -71,8 +71,9 @@ typedef enum
 
 // functions for export
 void exosite_meta_defaults(void);
-void exosite_meta_init(void);
+void exosite_meta_init(int reset);
 void exosite_meta_write(unsigned char * write_buffer, unsigned short srcBytes, unsigned char element);
 void exosite_meta_read(unsigned char * read_buffer, unsigned short destBytes, unsigned char element);
 
 #endif
+

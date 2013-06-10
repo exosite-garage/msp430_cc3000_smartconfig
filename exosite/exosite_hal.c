@@ -32,8 +32,9 @@
 *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *
 *****************************************************************************/
+#include "exosite.h"
 #include "exosite_hal.h"
-#include "exosite_meta.h"
+//#include "exosite_meta.h"
 
 #include <socket.h>
 #include <nvmem.h>
@@ -43,13 +44,6 @@
 #include <common.h>
 
 // local defines
-#ifdef __MSP430FR5739__
-#pragma DATA_SECTION(exo_meta, ".exo_meta") //create a meta section in FRAM
-char exo_meta[META_SIZE];
-#elif __IAR_SYSTEMS_ICC__
-#pragma location = "EXO_META"
-__no_init char exo_meta[META_SIZE];
-#endif
 
 // local functions
 
@@ -59,106 +53,54 @@ extern sockaddr tSocketAddr;
 // global variables
 
 
-//*****************************************************************************
-//
-//! exoHAL_ReadHWMAC
-//!
-//!  \param  Interface Number (1 - WiFi), buffer to return hexadecimal MAC
-//!
-//!  \return None
-//!
-//!  \brief  Reads the MAC address from the hardware
-//
-//*****************************************************************************
-void
-exoHAL_ReadHWMAC(unsigned char if_nbr, unsigned char * macBuf)
+/*****************************************************************************
+*
+*   exoHAL_ReadUUID
+*
+*   \param  Interface Number (1 - WiFi), buffer to return hexadecimal MAC
+*
+*   \return 0 if failure; length of UUID if success;
+*
+*   \brief  Reads the MAC address from the hardware
+*
+*****************************************************************************/
+int
+exoHAL_ReadUUID(unsigned char if_nbr, unsigned char * UUID_buf)
 {
+  int retval = 0;
+  const char hex[] = "0123456789abcdef";
+
+  unsigned char macBuf[10];
+
   switch (if_nbr) {
+    case IF_GPRS:
+      break;
+    case IF_ENET:
+      break;
     case IF_WIFI:
       nvmem_read(NVMEM_MAC_FILEID, 6, 0, (unsigned char *)macBuf);
+
+      UUID_buf[0]  = hex[macBuf[0] >> 4];
+      UUID_buf[1]  = hex[macBuf[0] & 15];
+      UUID_buf[2]  = hex[macBuf[1] >> 4];
+      UUID_buf[3]  = hex[macBuf[1] & 15];
+      UUID_buf[4]  = hex[macBuf[2] >> 4];
+      UUID_buf[5]  = hex[macBuf[2] & 15];
+      UUID_buf[6]  = hex[macBuf[3] >> 4];
+      UUID_buf[7]  = hex[macBuf[3] & 15];
+      UUID_buf[8]  = hex[macBuf[4] >> 4];
+      UUID_buf[9]  = hex[macBuf[4] & 15];
+      UUID_buf[10] = hex[macBuf[5] >> 4];
+      UUID_buf[11] = hex[macBuf[5] & 15];
+
+      UUID_buf[12] = 0;
+      retval = strlen((char *)UUID_buf);
       break;
     default:
       break;
   }
-}
 
-
-//*****************************************************************************
-//
-//! exoHAL_EnableNVMeta
-//!
-//!  \param  None
-//!
-//!  \return None
-//!
-//!  \brief  Enables meta non-volatile memory, if any
-//
-//*****************************************************************************
-void
-exoHAL_EnableMeta(void)
-{
-  return; //nothing to do on msp430 (FRAM is awesome)
-}
-
-
-//*****************************************************************************
-//
-//! exoHAL_EraseNVMeta
-//!
-//!  \param  None
-//!
-//!  \return None
-//!
-//!  \brief  Wipes out meta information - replaces with 0's.
-//
-//*****************************************************************************
-void
-exoHAL_EraseMeta(void)
-{
-  memset(exo_meta, 0, META_SIZE); //on msp430, simply set the region to 0
-  return;
-}
-
-
-//*****************************************************************************
-//
-//! exoHAL_WriteMetaItem
-//!
-//!  \param  buffer - string buffer containing info to write to meta; len -
-//!          size of string in bytes; offset - offset from base of meta
-//!          location to store the item.
-//!
-//!  \return None
-//!
-//!  \brief  Stores information to the NV meta structure.
-//
-//*****************************************************************************
-void
-exoHAL_WriteMetaItem(unsigned char * buffer, unsigned char len, int offset)
-{
-  memcpy((char *)(exo_meta + offset), buffer, len); //on msp430, simply put the info into mem
-  return;
-}
-
-
-//*****************************************************************************
-//
-//! exoHAL_ReadMetaItem
-//!
-//!  \param  buffer - string buffer containing info to write to meta; len -
-//!          size of string in bytes; offset - offset from base of meta
-//!          location to store the item.
-//!
-//!  \return None
-//!
-//!  \brief  Stores information to the NV meta structure.
-//
-//*****************************************************************************
-void
-exoHAL_ReadMetaItem(unsigned char * buffer, unsigned char len, int offset)
-{
-  memcpy(buffer, (char *)(exo_meta + offset), len); //on msp430, simply read the info from mem
-  return;
+  return retval;
 }
 
 
@@ -192,7 +134,7 @@ exoHAL_SocketClose(long socket)
 //
 //*****************************************************************************
 long
-exoHAL_SocketOpenTCP()
+exoHAL_SocketOpenTCP(void)
 {
   return((long)socket(AF_INET, SOCK_STREAM, IPPROTO_TCP));
 }
@@ -212,12 +154,9 @@ exoHAL_SocketOpenTCP()
 long
 exoHAL_ServerConnect(long sock)
 {
-  unsigned char server[META_SERVER_SIZE];
+  long retval;
 
   tSocketAddr.sa_family = 2;
-
-
-  exosite_meta_read(server, META_SERVER_SIZE, META_SERVER);
 
   //TODO - use DNS or check m2.exosite.com/ip to check for updates
   tSocketAddr.sa_data[0] = 0;   //server[4];//(port & 0xFF00) >> 8;
@@ -227,7 +166,12 @@ exoHAL_ServerConnect(long sock)
   tSocketAddr.sa_data[4] = 209; //server[2];//209;  // Third Octet of destination IP
   tSocketAddr.sa_data[5] =  28; //server[3];//28;   // Fourth Octet of destination IP
 
-  return connect(sock, &tSocketAddr, sizeof(tSocketAddr));
+  retval = connect(sock, &tSocketAddr, sizeof(tSocketAddr));
+
+  if (retval >= 0)
+    turnLedOn(CC3000_SERVER_INIT_IND);
+
+  return retval;
 }
 
 
@@ -246,7 +190,10 @@ exoHAL_ServerConnect(long sock)
 unsigned char
 exoHAL_SocketSend(long socket, char * buffer, unsigned char len)
 {
-  return (unsigned char)send(socket, buffer, (long)len, 0); //always set flags to 0 for CC3000
+  int result;
+  result = send(socket, buffer, (long)len, 0); //always set flags to 0 for CC3000
+  hci_unsolicited_event_handler();
+  return  (unsigned char)result;
 }
 
 
@@ -280,6 +227,7 @@ exoHAL_SocketRecv(long socket, char * buffer, unsigned char len)
 //!  \brief  Handles errors in platform-specific way
 //
 //*****************************************************************************
+/*
 void
 exoHAL_HandleError(unsigned char code)
 {
@@ -297,35 +245,8 @@ exoHAL_HandleError(unsigned char code)
 
   return;
 }
+*/
 
-
-//*****************************************************************************
-//
-//! exoHAL_ShowUIMessage
-//!
-//!  \param  code - UI code for message to display;
-//!
-//!  \return None
-//!
-//!  \brief  Displays message in a platform specific way
-//
-//*****************************************************************************
-void
-exoHAL_ShowUIMessage(unsigned char code)
-{
-  switch (code) {
-    case EXO_SERVER_CONNECTED:
-      turnLedOn(CC3000_SERVER_INIT_IND);
-      break;
-    case EXO_CLIENT_RW:
-      turnLedOn(CC3000_CLIENT_CONNECTED_IND);
-      break;
-    default:
-      break;
-  }
-
-  return;
-}
 
 
 //*****************************************************************************

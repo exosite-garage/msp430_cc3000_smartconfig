@@ -26,8 +26,8 @@ MEMORY
     RAM                     : origin = 0x1C00, length = 0x0400
     INFOA                   : origin = 0x1880, length = 0x0080
     INFOB                   : origin = 0x1800, length = 0x0080
-    FRAM_DATA		             : origin = 0xC200, length = 0x01F0
-    FRAM                    : origin = 0xC3F0, length = 0x3B90
+    FRAM_DATA		        : origin = 0xC200, length = 0x02F0
+    FRAM                    : origin = 0xC4F0, length = 0x3A90
     SIGNATURE               : origin = 0xFF88, length = 0x0008
     INT00                   : origin = 0xFF90, length = 0x0002
     INT01                   : origin = 0xFF92, length = 0x0002

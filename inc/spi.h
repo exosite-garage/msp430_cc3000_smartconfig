@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-*  spi.h  - CC4000 Slim Driver Implementation.
+*  spi.h  - CC3000 Host Driver Implementation.
 *  Copyright (C) 2011 Texas Instruments Incorporated - http://www.ti.com/
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,7 @@
 
 
 
+
 //*****************************************************************************
 //
 // If building with a C++ compiler, make all of the definitions in this header
@@ -58,6 +59,18 @@ typedef void (*gcSpiHandleTx)(void);
 
 extern unsigned char wlan_tx_buffer[];
 
+#define MOSI_MISO_PORT_SEL    P1SEL1
+#define MOSI_MISO_PORT_SEL2   P1SEL0
+#define SPI_MISO_PIN         BIT6
+#define SPI_MOSI_PIN         BIT7
+
+#define SPI_CLK_PORT_SEL    P2SEL1
+#define SPI_CLK_PORT_SEL2   P2SEL0
+#define SPI_CLK_PIN         BIT2
+
+#define SPI_IRQ_PORT    P2IE
+#define SPI_IFG_PORT    P2IFG
+#define SPI_IRQ_PIN     BIT3
 //*****************************************************************************
 //
 // Prototypes for the APIs.
@@ -77,7 +90,9 @@ extern void SpiConfigureHwMapping(	unsigned long ulPioPortAddress,
 									unsigned long ulSsiRx,
 									unsigned long ulSsiClck);
 extern void SpiCleanGPIOISR(void);
-int init_spi(void);
+extern int init_spi(void);
+extern long TXBufferIsEmpty(void);
+extern long RXBufferIsEmpty(void);
 //*****************************************************************************
 //
 // Mark the end of the C bindings section for C++ compilers.

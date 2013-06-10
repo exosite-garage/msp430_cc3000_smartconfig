@@ -34,29 +34,27 @@
 *****************************************************************************/
 #include "exosite_meta.h"
 #include "exosite_hal.h"
-#include <string.h>
+#include "string.h"
 
-// local defines
-
-// local functions
-
+// external functions
 // externs
+// local functions
+// exported functions
+// local defines
+// globals
 
-// global variables
-
-
-//*****************************************************************************
-//
-//! exosite_meta_init
-//!
-//!  \param  None
-//!
-//!  \return None
-//!
-//!  \brief  Does whatever we need to do to initialize the NV meta structure
-//
-//*****************************************************************************
-void exosite_meta_init(void)
+/*****************************************************************************
+*
+*  exosite_meta_init
+*
+*  \param  int reset : 1 - reset meta data
+*
+*  \return None
+*
+*  \brief  Does whatever we need to do to initialize the NV meta structure
+*
+*****************************************************************************/
+void exosite_meta_init(int reset)
 {
   char strBuf[META_MARK_SIZE];
 
@@ -64,48 +62,50 @@ void exosite_meta_init(void)
 
   //check our meta mark - if it isn't there, we wipe the meta structure
   exosite_meta_read((unsigned char *)strBuf, META_MARK_SIZE, META_MARK);
-  if (strncmp(strBuf, EXOMARK, META_MARK_SIZE)) exosite_meta_defaults();
+  if (strncmp(strBuf, EXOMARK, META_MARK_SIZE) || reset)
+    exosite_meta_defaults();
 
+  return;
 }
 
 
-//*****************************************************************************
-//
-//! exosite_meta_defaults
-//!
-//!  \param  None
-//!
-//!  \return None
-//!
-//!  \brief  Writes default meta values to NV memory.  Erases existing meta
-//!          information!
-//
-//*****************************************************************************
+/*****************************************************************************
+*
+*  exosite_meta_defaults
+*
+*  \param  None
+*
+*  \return None
+*
+*  \brief  Writes default meta values to NV memory.  Erases existing meta
+*          information!
+*
+*****************************************************************************/
 void exosite_meta_defaults(void)
 {
   const unsigned char meta_server_ip[6] = {173,255,209,28,0,80};
 
   exoHAL_EraseMeta(); //erase the information currently in meta
   exosite_meta_write((unsigned char *)meta_server_ip, 6, META_SERVER);     //store server IP
-  exosite_meta_write(EXOMARK, META_MARK_SIZE, META_MARK); //store exosite mark
+  exosite_meta_write((unsigned char *)EXOMARK, META_MARK_SIZE, META_MARK); //store exosite mark
 
   return;
 }
 
 
-//*****************************************************************************
-//
-//! exosite_meta_write
-//!
-//!  \param  write_buffer - string buffer containing info to write to meta;
-//!          srcBytes - size of string in bytes; element - item from
-//!          MetaElements enum.
-//!
-//!  \return None
-//!
-//!  \brief  Writes specific meta information to meta memory.
-//
-//*****************************************************************************
+/*****************************************************************************
+*
+*  exosite_meta_write
+*
+*  \param  write_buffer - string buffer containing info to write to meta;
+*          srcBytes - size of string in bytes; element - item from
+*          MetaElements enum.
+*
+*  \return None
+*
+*  \brief  Writes specific meta information to meta memory
+*
+*****************************************************************************/
 void exosite_meta_write(unsigned char * write_buffer, unsigned short srcBytes, unsigned char element)
 {
   exosite_meta * meta_info = 0;
@@ -142,18 +142,18 @@ void exosite_meta_write(unsigned char * write_buffer, unsigned short srcBytes, u
 }
 
 
-//*****************************************************************************
-//
-//! exosite_meta_read
-//!
-//!  \param  read_buffer - string buffer to receive element data; destBytes -
-//!          size of buffer in bytes; element - item from MetaElements enum.
-//!
-//!  \return None
-//!
-//!  \brief  Writes specific meta information to meta memory.
-//
-//*****************************************************************************
+/*****************************************************************************
+*
+*  exosite_meta_read
+*
+*  \param  read_buffer - string buffer to receive element data; destBytes -
+*          size of buffer in bytes; element - item from MetaElements enum.
+*
+*  \return None
+*
+*  \brief  Writes specific meta information to meta memory
+*
+*****************************************************************************/
 void exosite_meta_read(unsigned char * read_buffer, unsigned short destBytes, unsigned char element)
 {
   exosite_meta * meta_info = 0;
@@ -161,23 +161,23 @@ void exosite_meta_read(unsigned char * read_buffer, unsigned short destBytes, un
   switch (element) {
     case META_CIK:
       if (destBytes < META_CIK_SIZE) return;
-      exoHAL_ReadMetaItem(read_buffer, destBytes, (int)meta_info->cik); //read CIK
+      exoHAL_ReadMetaItem(read_buffer, META_CIK_SIZE, (int)meta_info->cik); //read CIK
       break;
     case META_SERVER:
       if (destBytes < META_SERVER_SIZE) return;
-      exoHAL_ReadMetaItem(read_buffer, destBytes, (int)meta_info->server); //read server IP
+      exoHAL_ReadMetaItem(read_buffer, META_SERVER_SIZE, (int)meta_info->server); //read server IP
       break;
     case META_MARK:
       if (destBytes < META_MARK_SIZE) return;
-      exoHAL_ReadMetaItem(read_buffer, destBytes, (int)meta_info->mark); //read exosite mark
+      exoHAL_ReadMetaItem(read_buffer, META_MARK_SIZE, (int)meta_info->mark); //read exosite mark
       break;
     case META_UUID:
       if (destBytes < META_UUID_SIZE) return;
-      exoHAL_ReadMetaItem(read_buffer, destBytes, (int)meta_info->uuid); //read exosite mark
+      exoHAL_ReadMetaItem(read_buffer, META_UUID_SIZE, (int)meta_info->uuid); //read provisioning UUID
       break;
     case META_MFR:
       if (destBytes < META_MFR_SIZE) return;
-      exoHAL_ReadMetaItem(read_buffer, destBytes, (int)meta_info->mfr); //read exosite mark
+      exoHAL_ReadMetaItem(read_buffer, META_MFR_SIZE, (int)meta_info->mfr); //read manufacturing info
       break;
     case META_NONE:
     default:
@@ -186,6 +186,5 @@ void exosite_meta_read(unsigned char * read_buffer, unsigned short destBytes, un
 
   return;
 }
-
 
 

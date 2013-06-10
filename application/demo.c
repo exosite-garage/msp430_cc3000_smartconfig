@@ -45,11 +45,13 @@
 #include "string.h"
 #include "utils.h"
 #include "spi.h"
-#include "demo_config.h"
+//#include "demo_config.h"
 #include "uart.h"
+#include "../exosite/exosite.h"
 
 
 // local defines
+#define ExositeAppVersion                  "  v0.1  "
 #define WRITE_INTERVAL 5
 #define EXO_BUFFER_SIZE 200 //reserve 200 bytes for packing all our write data into a FRAM buffer
 
@@ -63,24 +65,18 @@ __no_init char exo_buffer[EXO_BUFFER_SIZE];
 
 // local functions
 unsigned char checkWiFiConnected(void);
-
+void show_status(void);
 
 // exported functions
 
 // externs
 extern const char sensorNames[10][11];
-extern int Exosite_Write(char * pbuf, unsigned char buflen);
-extern int Exosite_Read(char * palias, char * pbuf, unsigned char buflen);
-extern int Exosite_Init(void);
-extern int Exosite_ReInit(void);
 extern char *itoa(int n, char *s, int b);
 extern void busyWait(unsigned short delay);
 extern void board_init(void);
 
 // global variables
 int cloud_status = -1;
-//unsigned char * ptrSSIDInd = (unsigned char *)0x1810;
-//unsigned char * ptrSSID = (unsigned char *)0x1820;
 
 /** \brief Flag indicating whether user requested to perform Smart Config */
 volatile char runSmartConfig = 0;
@@ -131,6 +127,14 @@ void main(void)
   board_init();
   initUart();
   sendString("System init : \r\n");
+
+  // Must initialize one time for MAC address prepare..
+  if (!Exosite_Init("exosite", "cc3000wifismartconfig", IF_WIFI, 0))
+  {
+    show_status();
+    while(1);
+  }
+
   // Main Loop
   while (1)
   {
@@ -141,13 +145,13 @@ void main(void)
       // Clear flag
       ClearFTCflag();
       unsetCC3000MachineState(CC3000_ASSOC);
-      sendString("==Start SmartConfig==\r\n");
+
       // Start the Smart Config Process
       StartSmartConfig();
       runSmartConfig = 0;
     }
-    sendString("==Check WiFi Connected==\r\n");
-    WDTCTL = WDT_ARST_1000;
+
+    WDTCTL = WDTPW + WDTHOLD;
     // If connectivity is good, run the primary functionality
     if(checkWiFiConnected())
     {
@@ -155,58 +159,79 @@ void main(void)
 
       //unsolicicted_events_timer_disable();
 
-      if (0 == cloud_status) { //check to see if we have a valid connection
+      if (0 == cloud_status)
+      { //check to see if we have a valid connection
         loop_time = 2000;
 
-        loopCount = 0;
+        loopCount = 1;
 
-        while (loopCount++ <= WRITE_INTERVAL)
+        while (loopCount++ <= (WRITE_INTERVAL+1))
         {
-          WDTCTL = WDT_ARST_1000;
+//          WDTCTL = WDT_ARST_1000;
           if (Exosite_Read("led7_ctrl", pbuf, EXO_BUFFER_SIZE))
           {
+        	// Read success
+        	turnLedOn(CC3000_CLIENT_CONNECTED_IND);
+
             if (!strncmp(pbuf, "0", 1))
               turnLedOff(LED7);
             else if (!strncmp(pbuf, "1", 1))
               turnLedOn(LED7);
           }
+          else
+          {
+        	if (EXO_STATUS_NOAUTH == Exosite_StatusCode())
+        	{
+        		turnLedOff(CC3000_CLIENT_CONNECTED_IND);
+        		// Activate device again
+        		cloud_status = Exosite_Activate();
+        	}
+          }
 
           hci_unsolicited_event_handler();
           unsolicicted_events_timer_init();
-          sendString("== Exosite Read==\r\n");
+          //sendString("== Exosite Read==\r\n");
           WDTCTL = WDTPW + WDTHOLD;
           busyWait(loop_time);        //delay before looping again
         }
 
         unsolicicted_events_timer_init();
-        unsigned char sensorCount = 0;
-        int value;
-        char strRead[6]; //largest value of an int in ascii is 5 + null terminate
-        WDTCTL = WDT_ARST_1000;
-        for (sensorCount = 0; sensorCount < SENSOR_END; sensorCount++) {
-          value = getSensorResult(sensorCount);                                       //get the sensor reading
-          itoa(value, strRead, 10);                           //convert to a string
-          unsolicicted_events_timer_init();
-          //for each reading / data source (alias), we need to build the string "alias=value" (must be URL encoded)
-          //this is all just an iteration of, for example, Exosite_Write("mydata=hello_world",18);
-          memcpy(pbuf,&sensorNames[sensorCount][0],strlen(&sensorNames[sensorCount][0]));  //copy alias name into buffer
-          pbuf += strlen(&sensorNames[sensorCount][0]);
-          *pbuf++ = 0x3d;                                             //put an '=' into buffer
-          memcpy(pbuf,strRead, strlen(strRead));                      //copy value into buffer
-          pbuf += strlen(strRead);
-          *pbuf++ = 0x26;                                             //put an '&' into buffer, the '&' ties successive alias=val pairs together
-        }
-        pbuf--;                                                                       //back out the last '&'
-        WDTCTL = WDT_ARST_1000;
-        Exosite_Write(exo_buffer,(pbuf - exo_buffer - 1));    //write all sensor values to the cloud
-        sendString("== Exosite Write==\r\n");
+    	if (EXO_STATUS_NOAUTH != Exosite_StatusCode())
+    	{
+          unsigned char sensorCount = 0;
+          int value;
+          char strRead[6]; //largest value of an int in ascii is 5 + null terminate
+          WDTCTL = WDT_ARST_1000;
+          for (sensorCount = 0; sensorCount < SENSOR_END; sensorCount++)
+          {
+            value = getSensorResult(sensorCount);                                       //get the sensor reading
+            itoa(value, strRead, 10);                           //convert to a string
+            unsolicicted_events_timer_init();
+            //for each reading / data source (alias), we need to build the string "alias=value" (must be URL encoded)
+            //this is all just an iteration of, for example, Exosite_Write("mydata=hello_world",18);
+            memcpy(pbuf,&sensorNames[sensorCount][0],strlen(&sensorNames[sensorCount][0]));  //copy alias name into buffer
+            pbuf += strlen(&sensorNames[sensorCount][0]);
+            *pbuf++ = 0x3d;                                             //put an '=' into buffer
+            memcpy(pbuf,strRead, strlen(strRead));                      //copy value into buffer
+            pbuf += strlen(strRead);
+            *pbuf++ = 0x26;                                             //put an '&' into buffer, the '&' ties successive alias=val pairs together
+          }
+          pbuf--;                                                                       //back out the last '&'
+          WDTCTL = WDT_ARST_1000;
+          Exosite_Write(exo_buffer,(pbuf - exo_buffer - 1));    //write all sensor values to the cloud
+
+          if (EXO_STATUS_OK == Exosite_StatusCode())
+          { // Write success
+    	    turnLedOn(CC3000_CLIENT_CONNECTED_IND);
+          }
+    	}
       } else {
           //we don't have a good connection yet - we keep retrying to authenticate
     	  WDTCTL = WDTPW + WDTHOLD;
-          sendString("== Exosite Re-init==\r\n");
-          cloud_status = Exosite_ReInit();
+          //sendString("== Exosite Activate==\r\n");
+          cloud_status = Exosite_Activate();
           if (0 != cloud_status) loop_time = 30000; //delay 30 seconds before retrying...
-        }
+      }
 
         unsolicicted_events_timer_init();
       }
@@ -246,12 +271,12 @@ checkWiFiConnected(void)
     {
       // Smart Config not set, check whether we have an SSID
       // from the assoc terminal command. If not, use fixed SSID.
-        sendString("== ConnectUsingSSID==\r\n");
+        //sendString("== ConnectUsingSSID==\r\n");
         ConnectUsingSSID(SSID);
     }
     unsolicicted_events_timer_init();
     // Wait until connection is finished
-    sendString("== Wait until connection is finished==\r\n");
+    //sendString("== Wait until connection is finished==\r\n");
     while (!(currentCC3000State() & CC3000_ASSOC))
     {
       WDTCTL = WDT_ARST_1000;
@@ -277,7 +302,7 @@ checkWiFiConnected(void)
 
     if (obtainIpInfoFlag == FALSE)
     {
-      sendString("== CC3000_IP_ALLOC_IND==\r\n");
+      //sendString("== CC3000_IP_ALLOC_IND==\r\n");
       obtainIpInfoFlag = TRUE;             // Set flag so we don't constantly turn the LED on
       turnLedOn(CC3000_IP_ALLOC_IND);
       ipInfoFlagSet = 1;
@@ -303,8 +328,8 @@ checkWiFiConnected(void)
     if( ipInfoFlagSet == 1)
     {
       // Initialize an Exosite connection
-      sendString("== Exosite init ==\r\n");
-      cloud_status = Exosite_Init();
+      //sendString("== Exosite Activate ==\r\n");
+      cloud_status = Exosite_Activate();
       ipInfoFlagSet = 0;
     }
 
@@ -315,6 +340,48 @@ checkWiFiConnected(void)
 
 }
 
+
+
+/*****************************************************************************
+*
+*  show_status
+*
+*  \param  None
+*
+*  \return None
+*
+*  \brief  Shows the status message on the LCD display
+*
+*****************************************************************************/
+void show_status(void)
+{
+  int code = Exosite_StatusCode();
+
+  switch (code)
+  {
+    case EXO_STATUS_BAD_TCP:
+      break;
+    case EXO_STATUS_BAD_UUID:
+      break;
+    case EXO_STATUS_BAD_VENDOR:
+      break;
+    case EXO_STATUS_BAD_MODEL:
+      break;
+    case EXO_STATUS_BAD_INIT:
+      break;
+    case EXO_STATUS_BAD_SN:
+      break;
+    case EXO_STATUS_CONFLICT:
+      break;
+    case EXO_STATUS_BAD_CIK:
+      break;
+    case EXO_STATUS_NOAUTH:
+      break;
+
+  }
+
+  return;
+}
 
 #pragma vector=PORT4_VECTOR
 __interrupt void Port_4(void)

@@ -42,9 +42,8 @@
 //*****************************************************************************
 #include "hci.h"
 #include "spi.h"
-#include "os.h"
 #include "evnt_handler.h"
-#include "utils.h"
+#include "board.h"
 #include <msp430.h>
 
 
@@ -60,80 +59,36 @@
 
 #define HEADERS_SIZE_EVNT       (SPI_HEADER_SIZE + 5)
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
-//packed is used for preventing padding before sending the structure over the SPI                       ///
-//for every IDE, exist different syntax:          1.   __MSP430FR5739__ for CCS v5                      ///
-//                                                2.  __IAR_SYSTEMS_ICC__ for IAR Embedded Workbench    ///
-// THIS COMMENT IS VALID FOR EVERY STRUCT DEFENITION!                                                   ///
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+#define SPI_HEADER_SIZE			(5)
 
-
-#ifdef __MSP430FR5739__
-typedef struct __attribute__ ((__packed__)) _btspi_hdr
-#elif __IAR_SYSTEMS_ICC__
-#pragma pack(1)
-typedef struct _btspi_hdr
-#endif
-{
-    unsigned char   cmd;
-    unsigned short  length;
-    unsigned char   pad[2];
-}btspi_hdr;
-
-
-
-#define  eSPI_STATE_POWERUP               (0)
-#define  eSPI_STATE_INITIALIZED           (1)
-#define  eSPI_STATE_IDLE                  (2)
-#define  eSPI_STATE_WRITE_IRQ             (3)
-#define  eSPI_STATE_WRITE_FIRST_PORTION   (4)
-#define  eSPI_STATE_WRITE_EOT             (5)
-#define  eSPI_STATE_READ_IRQ              (6)
-#define  eSPI_STATE_READ_FIRST_PORTION    (7)
-#define  eSPI_STATE_READ_EOT              (8)
-
-
-#define SPI_BUFFER_SIZE                 (200) //HAR TODO - original size options were 100 and 1700... if WLAN acts unstable, may need to increase this
+#define 	eSPI_STATE_POWERUP 				 (0)
+#define 	eSPI_STATE_INITIALIZED  		 (1)
+#define 	eSPI_STATE_IDLE					 (2)
+#define 	eSPI_STATE_WRITE_IRQ	   		 (3)
+#define 	eSPI_STATE_WRITE_FIRST_PORTION   (4)
+#define 	eSPI_STATE_WRITE_EOT			 (5)
+#define 	eSPI_STATE_READ_IRQ				 (6)
+#define 	eSPI_STATE_READ_FIRST_PORTION	 (7)
+#define 	eSPI_STATE_READ_EOT				 (8)
+#define     SPI_BUFFER_SIZE                 (200) //HAR TODO - original size options were 100 and 1700... if WLAN acts unstable, may need to increase this
 
 typedef struct
 {
-  unsigned long ulPioPortAddress;
-  unsigned long ulPioSpiPort;
-  unsigned long ulPioSpiCs;
-  unsigned long ulPortInt;
-  unsigned long ulPioSlEnable;
+	gcSpiHandleRx  SPIRxHandler;
+	unsigned short usTxPacketLength;
+	unsigned short usRxPacketLength;
+	unsigned long  ulSpiState;
+	unsigned char *pTxPacket;
+	unsigned char *pRxPacket;
 
-  unsigned long uluDmaPort;
-  unsigned long uluDmaRxChannel;
-  unsigned long uluDmaTxChannel;
-
-  unsigned long ulSsiPort;
-  unsigned long ulSsiPortAddress;
-  unsigned long ulSsiTx;
-  unsigned long ulSsiRx;
-  unsigned long ulSsiClck;
-  unsigned long ulSsiPortInt;
-}tSpiHwConfiguration;
-
-typedef struct
-{
-  gcSpiHandleRx  SPIRxHandler;
-
-  unsigned short usTxPacketLength;
-  unsigned short usRxPacketLength;
-  unsigned long  ulSpiState;
-  unsigned char *pTxPacket;
-  unsigned char *pRxPacket;
-  tSpiHwConfiguration	sHwSettings;
 }tSpiInformation;
 
 
 tSpiInformation sSpiInformation;
 
-//
-// Static buffer for 5 bytes of SPI HEADER
-//
-btspi_hdr tSpiReadHeader = {READ, 0, 0, 0};
+
+// buffer for 5 bytes of SPI HEADER
+unsigned char tSpiReadHeader[] = {READ, 0, 0, 0, 0};
 
 
 void SpiWriteDataSynchronous(unsigned char *data, unsigned short size);
@@ -142,28 +97,32 @@ void SpiPauseSpi(void);
 void SpiResumeSpi(void);
 void SSIContReadOperation(void);
 
+// The magic number that resides at the end of the TX/RX buffer (1 byte after
+// the allocated size) for the purpose of detection of the overrun. The location
+// of the memory where the magic number resides shall never be written. In case 
+// it is written - the overrun occurred and either receive function or send
+// function will stuck forever.
+#define CC3000_BUFFER_MAGIC_NUMBER (0xDE)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-//#pragma is used for determine the memory location for a specific variable.                            ///        ///
+//#pragma is used for determine the memory location for a specific variable.                            ///       
 //__no_init is used to prevent the buffer initialization in order to prevent hardware WDT expiration    ///
 // before entering to 'main()'.                                                                         ///
-//for every IDE, different syntax exists :          1.   __MSP430FR5739__ for CCS v5                    ///
+//for every IDE, different syntax exists :          1.   __CCS__ for CCS v5                             ///
 //                                                  2.  __IAR_SYSTEMS_ICC__ for IAR Embedded Workbench  ///
 // *CCS does not initialize variables - therefore, __no_init is not needed.                             ///
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifdef __MSP430FR5739__
+#ifdef __CCS__
 #pragma DATA_SECTION(spi_buffer, ".FRAM_DATA")
 char spi_buffer[SPI_BUFFER_SIZE];
 
 #elif __IAR_SYSTEMS_ICC__
 #pragma location = "FRAM_DATA"
-__no_init char spi_buffer[SPI_BUFFER_SIZE];
+__no_init char spi_buffer[CC3000_RX_BUFFER_SIZE];
 #endif
 
-
-
-#ifdef __MSP430FR5739__
+#ifdef __CCS__
 #pragma DATA_SECTION(wlan_tx_buffer, ".FRAM_DATA")
 unsigned char wlan_tx_buffer[SPI_BUFFER_SIZE];
 
@@ -171,70 +130,34 @@ unsigned char wlan_tx_buffer[SPI_BUFFER_SIZE];
 #pragma location = "FRAM_DATA"
 __no_init unsigned char wlan_tx_buffer[SPI_BUFFER_SIZE];
 #endif
+
 //*****************************************************************************
 // 
-//!  This function get the reason for the GPIO interrupt and clear cooresponding
-//!  interrupt flag
+//!  SpiCleanGPIOISR
 //! 
 //!  \param  none
 //! 
 //!  \return none
 //! 
-//!  \brief  This function This function get the reason for the GPIO interrupt
-//!          and clear cooresponding interrupt flag
+//!  \brief  This function get the reason for the GPIO interrupt and clear
+//!          corresponding interrupt flag
 // 
 //*****************************************************************************
 void
 SpiCleanGPIOISR(void)
 {
-  P2IFG &= ~BIT3;
+	SPI_IFG_PORT &= ~SPI_IRQ_PIN;
 }
  
-
-//*****************************************************************************
-//
-//! This function: init_spi
-//!
-//!  \param  buffer
-//!
-//!  \return none
-//!
-//!  \brief  initializes an SPI interface
-//
-//*****************************************************************************
-
-int init_spi(void)
-{
-    // Select the SPI lines: MISO/MOSI on P1.6,7 CLK on P2.2
-    P1SEL1 |= (BIT6 + BIT7);
-    P1SEL0 &= (~(BIT6 + BIT7));
-
-    P2SEL1 |= (BIT2);
-    P2SEL0 &= ~BIT2;
-
-    UCB0CTLW0 |= UCSWRST;                     // **Put state machine in reset**
-    UCB0CTLW0 |= (UCMST+UCSYNC+UCMSB);          // 3-pin, 8-bit SPI master
-    // Clock polarity high, MSB
-    UCB0CTLW0 |= UCSSEL_2;                    // ACLK
-    UCB0BR0 = 0x02;                           // /2 change to /1
-    UCB0BR1 = 0;                              //
-
-    UCB0CTLW0 &= ~UCSWRST;                    // **Initialize USCI state machine**
-
-    return(ESUCCESS);
-}
-
-
-
 //*****************************************************************************
 //
 //!  SpiClose
 //!
-//!  \param  none
+//!  @param  none
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  Cofigure the SSI
+//!  @brief  Close Spi interface
 //
 //*****************************************************************************
 void
@@ -244,114 +167,151 @@ SpiClose(void)
 	{
 		sSpiInformation.pRxPacket = 0;
 	}
-
-	//
+	
 	//	Disable Interrupt in GPIOA module...
-	//
-    tSLInformation.WlanInterruptDisable();
+	tSLInformation.WlanInterruptDisable();
 }
 
 
 //*****************************************************************************
 //
-//!  SpiClose
+//!  SpiOpen
 //!
-//!  \param  none
+//!  @param  none
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  Cofigure the SSI
+//!  @brief  Open Spi interface 
 //
 //*****************************************************************************
 void 
 SpiOpen(gcSpiHandleRx pfRxHandler)
 {
-  sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
-
-  sSpiInformation.SPIRxHandler = pfRxHandler;
-  sSpiInformation.usTxPacketLength = 0;
-  sSpiInformation.pTxPacket = NULL;
-  sSpiInformation.pRxPacket = (unsigned char *)spi_buffer;
-  sSpiInformation.usRxPacketLength = 0;
-  //
-  // Enable interrupt on the GPIOA pin of WLAN IRQ
-  //
-  tSLInformation.WlanInterruptEnable();
+	sSpiInformation.ulSpiState = eSPI_STATE_POWERUP;
+	sSpiInformation.SPIRxHandler = pfRxHandler;
+	sSpiInformation.usTxPacketLength = 0;
+	sSpiInformation.pTxPacket = NULL;
+	sSpiInformation.pRxPacket = (unsigned char *)spi_buffer;
+	sSpiInformation.usRxPacketLength = 0;
+	spi_buffer[SPI_BUFFER_SIZE - 1] = CC3000_BUFFER_MAGIC_NUMBER;
+	wlan_tx_buffer[SPI_BUFFER_SIZE - 1] = CC3000_BUFFER_MAGIC_NUMBER;
+	
+	// Enable interrupt on the GPIOA pin of WLAN IRQ
+	tSLInformation.WlanInterruptEnable();
 }
-
 
 //*****************************************************************************
 //
-//! This function enter point for write flow
+//!  init_spi
 //!
-//!  \param  buffer
+//!  @param  none
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  ...
+//!  @brief  initializes an SPI interface
+//
+//*****************************************************************************
+
+int init_spi(void)
+{
+	// Select the SPI lines: MISO/MOSI on P1.6,7 
+	MOSI_MISO_PORT_SEL |= (SPI_MISO_PIN + SPI_MOSI_PIN);
+	MOSI_MISO_PORT_SEL2 &= (~(SPI_MISO_PIN + SPI_MOSI_PIN));
+	//CLK on P2.2
+	SPI_CLK_PORT_SEL |= (SPI_CLK_PIN);
+	SPI_CLK_PORT_SEL2 &= ~SPI_CLK_PIN;
+	
+	UCB0CTLW0 |= UCSWRST;                     // Put state machine in reset
+	UCB0CTLW0 |= (UCMST+UCSYNC+UCMSB);      	// 3-pin, 8-bit SPI master
+	// Clock polarity high, MSB
+	UCB0CTLW0 |= UCSSEL_2;                    // ACLK
+	UCB0BR0 = 0x02;                           // /2 change to /1
+	UCB0BR1 = 0;                              //
+	
+	UCB0CTLW0 &= ~UCSWRST;                    //Initialize USCI state machine
+	
+	return(ESUCCESS);
+}
+
+//*****************************************************************************
+//
+//! SpiFirstWrite
+//!
+//!  @param  ucBuf     buffer to write
+//!  @param  usLength  buffer's length
+//!
+//!  @return none
+//!
+//!  @brief  enter point for first write flow
 //
 //*****************************************************************************
 long
 SpiFirstWrite(unsigned char *ucBuf, unsigned short usLength)
 {
-    //
-    // workaround for first transaction
-    //
-    ASSERT_CS();
-
-    // Assuming we are running on 24 MHz ~50 micro delay is 1200 cycles;
-    __delay_cycles(1200);
-
-    // SPI writes first 4 bytes of data
-    SpiWriteDataSynchronous(ucBuf, 4);
-
-    __delay_cycles(1200);
-
-    SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
-
-    // From this point on - operate in a regular way
-    sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
-
-    DEASSERT_CS();
-
-    return(0);
+	// workaround for first transaction
+	ASSERT_CS();
+	
+	// Assuming we are running on 24 MHz ~50 micro delay is 1200 cycles;
+	__delay_cycles(1200);
+	
+	// SPI writes first 4 bytes of data
+	SpiWriteDataSynchronous(ucBuf, 4);
+	
+	__delay_cycles(1200);
+	
+	SpiWriteDataSynchronous(ucBuf + 4, usLength - 4);
+	
+	// From this point on - operate in a regular way
+	sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
+	
+	DEASSERT_CS();
+	
+	return(0);
 }
-
 
 
 //*****************************************************************************
 //
-//! This function enter point for write flow
+//!  SpiWrite
 //!
-//!  \param  buffer
+//!  @param  pUserBuffer  buffer to write
+//!  @param  usLength     buffer's length
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  ...
+//!  @brief  Spi write operation
 //
 //*****************************************************************************
 long
 SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 {
-    unsigned char ucPad = 0;
-
-	//
-	// Figure out the total length of the packet in order to figure out if there is padding or not
-	//
-    if(!(usLength & 0x0001))
-    {
-        ucPad++;
-    }
-
-
-    pUserBuffer[0] = WRITE;
-    pUserBuffer[1] = HI(usLength + ucPad);
-    pUserBuffer[2] = LO(usLength + ucPad);
-    pUserBuffer[3] = 0;
-    pUserBuffer[4] = 0;
-
-    usLength += (sizeof(btspi_hdr) + ucPad);
-
+	unsigned char ucPad = 0;
+	
+	// Figure out the total length of the packet in order to figure out if there 
+	// is padding or not
+	if(!(usLength & 0x0001))
+	{
+		ucPad++;
+	}
+	
+	pUserBuffer[0] = WRITE;
+	pUserBuffer[1] = HI(usLength + ucPad);
+	pUserBuffer[2] = LO(usLength + ucPad);
+	pUserBuffer[3] = 0;
+	pUserBuffer[4] = 0;
+	
+	usLength += (SPI_HEADER_SIZE + ucPad);
+	
+	// The magic number that resides at the end of the TX/RX buffer (1 byte after 
+	// the allocated size) for the purpose of detection of the overrun. If the 
+	// magic number is overwritten - buffer overrun occurred - and we will stuck 
+	// here forever!
+	if (wlan_tx_buffer[SPI_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
+	{
+		while (1)
+			;
+	}
+	
 	if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
 	{
 		while (sSpiInformation.ulSpiState != eSPI_STATE_INITIALIZED)
@@ -360,124 +320,118 @@ SpiWrite(unsigned char *pUserBuffer, unsigned short usLength)
 	
 	if (sSpiInformation.ulSpiState == eSPI_STATE_INITIALIZED)
 	{
-		//
-		// This is time for first TX/RX transactions over SPI: the IRQ is down - so need to send read buffer size command
-		//
+		// This is time for first TX/RX transactions over SPI: the IRQ is down - 
+		// so need to send read buffer size command
 		SpiFirstWrite(pUserBuffer, usLength);
 	}
 	else 
 	{
-		//
-		// We need to prevent here race that can occur in case 2 back to back packets are sent to the 
-		// device, so the state will move to IDLE and once again to not IDLE due to IRQ
-		//
+		// We need to prevent here race that can occur in case 2 back to back 
+		// packets are sent to the  device, so the state will move to IDLE and once 
+		//again to not IDLE due to IRQ
 		tSLInformation.WlanInterruptDisable();
-
+		
 		while (sSpiInformation.ulSpiState != eSPI_STATE_IDLE)
 		{
 			;
 		}
-
 		
 		sSpiInformation.ulSpiState = eSPI_STATE_WRITE_IRQ;
 		sSpiInformation.pTxPacket = pUserBuffer;
 		sSpiInformation.usTxPacketLength = usLength;
 		
-		//
-		// Assert the CS line and wait till SSI IRQ line is active and then initialize write operation
-		//
+		// Assert the CS line and wait till SSI IRQ line is active and then
+		// initialize write operation
 		ASSERT_CS();
-
-		//
+		
 		// Re-enable IRQ - if it was not disabled - this is not a problem...
-		//
 		tSLInformation.WlanInterruptEnable();
+
+		// check for a missing interrupt between the CS assertion and enabling back the interrupts
+		if (tSLInformation.ReadWlanInterruptPin() == 0)
+		{
+            SpiWriteDataSynchronous(sSpiInformation.pTxPacket, sSpiInformation.usTxPacketLength);
+
+			sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
+
+			DEASSERT_CS();
+		}
 	}
-
-
-	//
+	
 	// Due to the fact that we are currently implementing a blocking situation
 	// here we will wait till end of transaction
-	//
-
-	{
-          volatile unsigned long vDelay = 3 * 0xAAAA; //0xAAAAA;
-          while (eSPI_STATE_IDLE != sSpiInformation.ulSpiState) {           
-            if (!vDelay--) {
-            	errorHandler(ERROR_SPI_TIMEOUT);  //TODO - Exosite workaround - can't have infinit loops with real HW folks!
-            }
-          }
-        }
+	while (eSPI_STATE_IDLE != sSpiInformation.ulSpiState)
+		;
 	
-    return(0);
+	return(0);
 }
 
  
-
-
 //*****************************************************************************
 //
-//! This function enter point for write flow
+//!  SpiWriteDataSynchronous
 //!
-//!  \param  buffer
+//!  @param  data  buffer to write
+//!  @param  size  buffer's size
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  ...
+//!  @brief  Spi write operation
 //
 //*****************************************************************************
 void
 SpiWriteDataSynchronous(unsigned char *data, unsigned short size)
 {
 	while (size)
-    {
-    	while (!(UCB0IFG&UCTXIFG));
+	{   	
+		while (!(TXBufferIsEmpty()));
 		UCB0TXBUF = *data;
-		while (!(UCB0IFG&UCRXIFG));
+		while (!(RXBufferIsEmpty()));
 		UCB0RXBUF;
 		size --;
-        data++;
-    }
+		data++;
+	}
 }
 
 //*****************************************************************************
 //
-//! This function enter point for write flow
+//! SpiReadDataSynchronous
 //!
-//!  \param  buffer
+//!  @param  data  buffer to read
+//!  @param  size  buffer's size
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  ...
+//!  @brief  Spi read operation
 //
 //*****************************************************************************
 void
 SpiReadDataSynchronous(unsigned char *data, unsigned short size)
 {
-	unsigned long i = 0;
-    char *data_to_send = ((char *)(&tSpiReadHeader.cmd));
+	long i = 0;
+	unsigned char *data_to_send = tSpiReadHeader;
 	
 	for (i = 0; i < size; i ++)
-    {
-    	while (!(UCB0IFG&UCTXIFG));
-		UCB0TXBUF = data_to_send[i];
-		while (!(UCB0IFG&UCRXIFG));
+	{
+		while (!(TXBufferIsEmpty()));
+		//Dummy write to trigger the clock
+		UCB0TXBUF = data_to_send[0];
+		while (!(RXBufferIsEmpty()));
 		data[i] = UCB0RXBUF;
-    }
+	}
 }
-
 
 
 //*****************************************************************************
 //
-//! This function enter point for read flow: first we read minimal 5 SPI header bytes and 5 Event
-//!	Data bytes
+//!  SpiReadHeader
 //!
 //!  \param  buffer
 //!
 //!  \return none
 //!
-//!  \brief  ...
+//!  \brief   This function enter point for read flow: first we read minimal 5 
+//!	          SPI header bytes and 5 Event Data bytes
 //
 //*****************************************************************************
 void
@@ -489,177 +443,169 @@ SpiReadHeader(void)
 
 //*****************************************************************************
 //
-//! This function processes received SPI Header and in accordance with it - continues reading 
-//!	the packet
+//!  SpiReadDataCont
 //!
-//!  \param  None
+//!  @param  None
 //!
-//!  \return None
+//!  @return None
 //!
-//!  \brief  ...
+//!  @brief  This function processes received SPI Header and in accordance with 
+//!	         it - continues reading the packet
 //
 //*****************************************************************************
 long
 SpiReadDataCont(void)
 {
-    hci_hdr_t *hci_hdr;
-    long data_to_recv;
-	hci_evnt_hdr_t *hci_evnt_hdr;
-	unsigned char *evnt_buff;
-	hci_data_hdr_t *pDataHdr;
-    
+	long data_to_recv;
+	unsigned char *evnt_buff, type;
 	
-    //
-    //determine what type of packet we have
-    //
-    evnt_buff =  sSpiInformation.pRxPacket;
-    data_to_recv = 0;
-	hci_hdr = (hci_hdr_t *)(evnt_buff + sizeof(btspi_hdr));
+	//determine what type of packet we have
+	evnt_buff =  sSpiInformation.pRxPacket;
+	data_to_recv = 0;
+	STREAM_TO_UINT8((char *)(evnt_buff + SPI_HEADER_SIZE), HCI_PACKET_TYPE_OFFSET,
+									type);
 	
-    switch(hci_hdr->ucType)
-    {
-        case HCI_TYPE_DATA:
-        {
-			pDataHdr = (hci_data_hdr_t *)(evnt_buff + sizeof(btspi_hdr));
-
-			//
+	switch(type)
+	{
+	case HCI_TYPE_DATA:
+		{
 			// We need to read the rest of data..
-			//
-			data_to_recv = pDataHdr->usLength;
-
+			STREAM_TO_UINT16((char *)(evnt_buff + SPI_HEADER_SIZE), 
+											 HCI_DATA_LENGTH_OFFSET, data_to_recv);
 			if (!((HEADERS_SIZE_EVNT + data_to_recv) & 1))
 			{	
-    	        data_to_recv++;
+				data_to_recv++;
 			}
-
+			
 			if (data_to_recv)
 			{
-            	SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
+				SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
 			}
-            break;
-        }
-        case HCI_TYPE_EVNT:
-        {
-        	//
-            //configure buffer to read rest of the data
-            //
-            hci_evnt_hdr = (hci_evnt_hdr_t *)hci_hdr;
-
-			// 
+			break;
+		}
+	case HCI_TYPE_EVNT:
+		{
 			// Calculate the rest length of the data
-			//
-            data_to_recv = hci_evnt_hdr->ucLength - 1;
+			STREAM_TO_UINT8((char *)(evnt_buff + SPI_HEADER_SIZE), 
+											HCI_EVENT_LENGTH_OFFSET, data_to_recv);
+			data_to_recv -= 1;
 			
-			// 
 			// Add padding byte if needed
-			//
 			if ((HEADERS_SIZE_EVNT + data_to_recv) & 1)
 			{
 				
-	            data_to_recv++;
+				data_to_recv++;
 			}
 			
 			if (data_to_recv)
 			{
-            	SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
+				SpiReadDataSynchronous(evnt_buff + 10, data_to_recv);
 			}
-
+			
 			sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
-            break;
-        }
-    }
+			break;
+		}
+	}
 	
-    return (0);
+	return (0);
 }
 
 
 //*****************************************************************************
 //
-//! This function enter point for write flow
+//! SpiPauseSpi
 //!
-//!  \param  SpiPauseSpi
+//!  @param  none
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  The function triggers a user provided callback for 
+//!  @brief  Spi pause operation
 //
 //*****************************************************************************
 
 void 
 SpiPauseSpi(void)
 {
-	P2IE &= ~BIT3;
+	SPI_IRQ_PORT &= ~SPI_IRQ_PIN;
 }
 
 
 //*****************************************************************************
 //
-//! This function enter point for write flow
+//! SpiResumeSpi
 //!
-//!  \param  SpiResumeSpi
+//!  @param  none
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  The function triggers a user provided callback for 
+//!  @brief  Spi resume operation
 //
 //*****************************************************************************
 
 void 
 SpiResumeSpi(void)
 {
-	P2IE |= BIT3;
+	SPI_IRQ_PORT |= SPI_IRQ_PIN;
 }
-
 
 
 //*****************************************************************************
 //
-//! This function enter point for write flow
+//! SpiTriggerRxProcessing
 //!
-//!  \param  SpiTriggerRxProcessing
+//!  @param  none
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  The function triggers a user provided callback for 
+//!  @brief  Spi RX processing 
 //
 //*****************************************************************************
 void 
 SpiTriggerRxProcessing(void)
 {
-	//
+	
 	// Trigger Rx processing
-	//
 	SpiPauseSpi();
 	DEASSERT_CS();
 	
+	// The magic number that resides at the end of the TX/RX buffer (1 byte after 
+	// the allocated size) for the purpose of detection of the overrun. If the 
+	// magic number is overwritten - buffer overrun occurred - and we will stuck 
+	// here forever!
+	if (sSpiInformation.pRxPacket[SPI_BUFFER_SIZE - 1] != CC3000_BUFFER_MAGIC_NUMBER)
+	{
+		while (1)
+			;
+	}
+	
 	sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
-	sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + sizeof(btspi_hdr));
+	sSpiInformation.SPIRxHandler(sSpiInformation.pRxPacket + SPI_HEADER_SIZE);
 }
 
 //*****************************************************************************
 // 
-//!  The IntSpiGPIOHandler interrupt handler
+//!  IntSpiGPIOHandler
 //! 
-//!  \param  none
+//!  @param  none
 //! 
-//!  \return none
+//!  @return none
 //! 
-//!  \brief  GPIO A interrupt handler. When the external SSI WLAN device is
+//!  @brief  GPIO A interrupt handler. When the external SSI WLAN device is
 //!          ready to interact with Host CPU it generates an interrupt signal.
-//!          After that Host CPU has registrated this interrupt request
+//!          After that Host CPU has registered this interrupt request
 //!          it set the corresponding /CS in active state.
 // 
 //*****************************************************************************
 #pragma vector=PORT2_VECTOR
 __interrupt void IntSpiGPIOHandler(void)
 {
-	//__bic_SR_register(GIE);
 	switch(__even_in_range(P2IV,P2IV_P2IFG3))
-    {
-	  case P2IV_P2IFG3:
+	{
+	case P2IV_P2IFG3:
 		if (sSpiInformation.ulSpiState == eSPI_STATE_POWERUP)
 		{
-			/* This means IRQ line was low call a callback of HCI Layer to inform on event */
+			//This means IRQ line was low call a callback of HCI Layer to inform 
+			//on event 
 	 		sSpiInformation.ulSpiState = eSPI_STATE_INITIALIZED;
 		}
 		else if (sSpiInformation.ulSpiState == eSPI_STATE_IDLE)
@@ -668,67 +614,88 @@ __interrupt void IntSpiGPIOHandler(void)
 			
 			/* IRQ line goes down - we are start reception */
 			ASSERT_CS();
-
-			//
+			
 			// Wait for TX/RX Compete which will come as DMA interrupt
-			// 
-	        SpiReadHeader();
-
+			SpiReadHeader();
+			
 			sSpiInformation.ulSpiState = eSPI_STATE_READ_EOT;
 			
-			//
-			//
-			//
 			SSIContReadOperation();
 		}
 		else if (sSpiInformation.ulSpiState == eSPI_STATE_WRITE_IRQ)
 		{
-			SpiWriteDataSynchronous(sSpiInformation.pTxPacket, sSpiInformation.usTxPacketLength);
-
+			SpiWriteDataSynchronous(sSpiInformation.pTxPacket, 
+															sSpiInformation.usTxPacketLength);
+			
 			sSpiInformation.ulSpiState = eSPI_STATE_IDLE;
-
+			
 			DEASSERT_CS();
 		}
 		break;
 	default:
 		break;
 	}
-
-	//__bis_SR_register(GIE);
+	
 }
 
 //*****************************************************************************
 //
-//! This function enter point for write flow
+//! SSIContReadOperation
 //!
-//!  \param  SSIContReadOperation
+//!  @param  none
 //!
-//!  \return none
+//!  @return none
 //!
-//!  \brief  The function triggers a user provided callback for 
+//!  @brief  SPI read operation
 //
 //*****************************************************************************
 
 void
 SSIContReadOperation(void)
 {
-	//
 	// The header was read - continue with  the payload read
-	//
 	if (!SpiReadDataCont())
 	{
-		
-		
-		//
-		// All the data was read - finalize handling by switching to teh task
+		// All the data was read - finalize handling by switching to the task
 		//	and calling from task Event Handler
-		//
 		SpiTriggerRxProcessing();
 	}
 }
 
 
+//*****************************************************************************
+//
+//! TXBufferIsEmpty
+//!
+//!  @param  
+//!
+//!  @return returns 1 if buffer is empty, 0 otherwise 
+//!
+//!  @brief  Indication if TX SPI buffer is empty 
+//
+//*****************************************************************************
 
+long TXBufferIsEmpty(void)
+{
+	return (UCB0IFG&UCTXIFG);
+}
+
+//*****************************************************************************
+//
+//! RXBufferIsEmpty
+//!
+//!  @param  none  
+//!
+//!  @return returns 1 if buffer is empty, 0 otherwise
+//!
+//!  @brief  Indication if RX SPI buffer is empty
+//
+//*****************************************************************************
+
+long RXBufferIsEmpty(void)
+{
+	return (UCB0IFG&UCRXIFG);
+}
 
 //*****************************************************************************
 //

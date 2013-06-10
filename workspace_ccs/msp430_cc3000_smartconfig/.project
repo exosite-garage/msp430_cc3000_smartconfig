@@ -137,11 +137,6 @@
 			<locationURI>PARENT-2-PROJECT_LOC/cc3000_host/nvmem.c</locationURI>
 		</link>
 		<link>
-			<name>cc3000_host/os.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/cc3000_host/os.c</locationURI>
-		</link>
-		<link>
 			<name>cc3000_host/security.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/cc3000_host/security.c</locationURI>
@@ -167,6 +162,11 @@
 			<locationURI>PARENT-2-PROJECT_LOC/exosite/exosite.c</locationURI>
 		</link>
 		<link>
+			<name>exosite/exosite.h</name>
+			<type>1</type>
+			<locationURI>PARENT-2-PROJECT_LOC/exosite/exosite.h</locationURI>
+		</link>
+		<link>
 			<name>exosite/exosite_hal.c</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/exosite/exosite_hal.c</locationURI>
@@ -175,16 +175,6 @@
 			<name>exosite/exosite_hal.h</name>
 			<type>1</type>
 			<locationURI>PARENT-2-PROJECT_LOC/exosite/exosite_hal.h</locationURI>
-		</link>
-		<link>
-			<name>exosite/exosite_meta.c</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/exosite/exosite_meta.c</locationURI>
-		</link>
-		<link>
-			<name>exosite/exosite_meta.h</name>
-			<type>1</type>
-			<locationURI>PARENT-2-PROJECT_LOC/exosite/exosite_meta.h</locationURI>
 		</link>
 		<link>
 			<name>inc/board.h</name>

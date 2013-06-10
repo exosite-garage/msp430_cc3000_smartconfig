@@ -35,7 +35,7 @@
 #ifndef __SPI_VERSION_H__
 #define __SPI_VERSION_H__
 
-#define SPI_VERSION_NUMBER   6
+#define SPI_VERSION_NUMBER   7
 
 #endif // __VERSION_H__
 

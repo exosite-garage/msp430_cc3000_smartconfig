@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-*  exosite_hal.h - Common header for Exosite hardware adapation layer
+*  exosite.h - Exosite library interface header
 *  Copyright (C) 2012 Exosite LLC
 *
 *  Redistribution and use in source and binary forms, with or without
@@ -33,25 +33,53 @@
 *
 *****************************************************************************/
 
-#ifndef EXOSITE_HAL_H
-#define EXOSITE_HAL_H
+#ifndef EXOSITE_H
+#define EXOSITE_H
+
+#include <stdint.h>
 
 // defines
-#define EXOSITE_HAL_SN_MAXLENGTH             16
+enum UUIDInterfaceTypes
+{
+    IF_WIFI,
+    IF_ENET,
+    IF_FILE,
+    IF_HDD,
+    IF_I2C,
+    IF_GPRS,
+    IF_NONE
+};
+
+enum ExositeStatusCodes
+{
+    EXO_STATUS_OK,
+    EXO_STATUS_INIT,
+    EXO_STATUS_BAD_UUID,
+    EXO_STATUS_BAD_VENDOR,
+    EXO_STATUS_BAD_MODEL,
+    EXO_STATUS_BAD_INIT,
+    EXO_STATUS_BAD_TCP,
+    EXO_STATUS_BAD_SN,
+    EXO_STATUS_CONFLICT,
+    EXO_STATUS_BAD_CIK,
+    EXO_STATUS_NOAUTH,
+    EXO_STATUS_END
+};
+
+#define EXOSITE_VENDOR_MAXLENGTH                 20
+#define EXOSITE_MODEL_MAXLENGTH                  20
+#define EXOSITE_SN_MAXLENGTH                     EXOSITE_HAL_SN_MAXLENGTH
+#define EXOSITE_DEMO_UPDATE_INTERVAL            4000// ms
+#define CIK_LENGTH                              40
 
 // functions for export
-int exoHAL_ReadUUID(unsigned char if_nbr, unsigned char * UUID_buf);
-void exoHAL_EnableMeta(void);
-void exoHAL_EraseMeta(void);
-void exoHAL_WriteMetaItem(unsigned char * buffer, unsigned char len, int offset);
-void exoHAL_ReadMetaItem(unsigned char * buffer, unsigned char len, int offset);
-void exoHAL_SocketClose(long socket);
-//long exoHAL_SocketOpenTCP(unsigned char *server);
-long exoHAL_SocketOpenTCP(void);
-long exoHAL_ServerConnect(long socket);
-unsigned char exoHAL_SocketSend(long socket, char * buffer, unsigned char len);
-unsigned char exoHAL_SocketRecv(long socket, char * buffer, unsigned char len);
-void exoHAL_MSDelay(unsigned short delay);
-
+int Exosite_Write(char * pbuf, unsigned char bufsize);
+int Exosite_Read(char * palias, char * pbuf, unsigned char buflen);
+int Exosite_Init(const char *vendor, const char *model, const unsigned char if_nbr, int reset);
+int Exosite_Activate(void);
+void Exosite_SetCIK(char * pCIK);
+int Exosite_GetCIK(char * pCIK);
+int Exosite_StatusCode(void);
+int Exosite_GetResponse(void);
 #endif
 
