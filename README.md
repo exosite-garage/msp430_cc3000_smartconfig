@@ -63,10 +63,10 @@ MSP430FRAM+CC3000 Patch Programmer. You will need a TI account to get the file.
     to config WiFi AP.
 
 13) Verify LED1, followed by LED2, LED3 and finally LED4 all come on
--)* LED1 is a "communications with WiFi module is working" indicator
--)* LED2 is a "WiFi signal with appropriate credentials is associated" indicator
--)* LED3 is a "WiFi signal has been connected" indicator
--)* LED4 is "Internet communications are working" indicator
+- * LED1 is a "communications with WiFi module is working" indicator
+- * LED2 is a "WiFi signal with appropriate credentials is associated" indicator
+- * LED3 is a "WiFi signal has been connected" indicator
+- * LED4 is "Internet communications are working" indicator
 
 14) Verify data in Exosite Portals is being reported to the data sources.  Data
     is written roughly every 10 seconds to all data sources, while data is read
@@ -82,11 +82,11 @@ MSP430FRAM+CC3000 Patch Programmer. You will need a TI account to get the file.
 17) See the file utils.h for error codes to assist with troubleshooting.  The
     errorhandler will blink LED 7 rapidly for a couple of seconds and then it
     will blink slowly for the following codes:
--)* 1 blink - not associated with an access point (check SSID/passphrase)
--)* 2 blinks - cannot connect to the exosite server (check Internet connection)
--)* 3 blinks - cannot write (check signal strength / distance from AP)
--)* 4 blinks - communiations the SPI module experience error, retry
--)* 5 blinks - rare race condition experienced, retry
+- * 1 blink - not associated with an access point (check SSID/passphrase)
+- * 2 blinks - cannot connect to the exosite server (check Internet connection)
+- * 3 blinks - cannot write (check signal strength / distance from AP)
+- * 4 blinks - communiations the SPI module experience error, retry
+- * 5 blinks - rare race condition experienced, retry
 
 ================================================================================
 Release Info
