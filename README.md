@@ -27,7 +27,7 @@ Tested with:
 ================================================================================
 Quick Start
 ================================================================================
-1) Download CC3000 patch Program from 
+1) Download CC3000 patch Program (V1.11)from 
 http://processors.wiki.ti.com/index.php/CC3000_Wi-Fi_Downloads select 
 MSP430FRAM+CC3000 Patch Programmer. You will need a TI account to get the file.
 
@@ -59,14 +59,14 @@ MSP430FRAM+CC3000 Patch Programmer. You will need a TI account to get the file.
 11) Attach the FRAM board to your PC via the mini-USB connector and 
     "Download and Debug" to your FRAM kit
     
-12) Press S1 until LED6 blinking.Refer http://processors.wiki.ti.com/index.php/CC3000_Wi-Fi_MSP430_FRAM_Getting_Started_Guide_Using_Smart_Config
+12) Press S1 until LED6 blinking. Refer http://processors.wiki.ti.com/index.php/CC3000_Wi-Fi_MSP430_FRAM_Getting_Started_Guide_Using_Smart_Config
     to config WiFi AP.
 
 13) Verify LED1, followed by LED2, LED3 and finally LED4 all come on
-    * LED1 is a "communications with WiFi module is working" indicator
-    * LED2 is a "WiFi signal with appropriate credentials is associated" indicator
-    * LED3 is a "WiFi signal has been connected" indicator
-    * LED4 is "Internet communications are working" indicator
+-)* LED1 is a "communications with WiFi module is working" indicator
+-)* LED2 is a "WiFi signal with appropriate credentials is associated" indicator
+-)* LED3 is a "WiFi signal has been connected" indicator
+-)* LED4 is "Internet communications are working" indicator
 
 14) Verify data in Exosite Portals is being reported to the data sources.  Data
     is written roughly every 10 seconds to all data sources, while data is read
@@ -82,11 +82,11 @@ MSP430FRAM+CC3000 Patch Programmer. You will need a TI account to get the file.
 17) See the file utils.h for error codes to assist with troubleshooting.  The
     errorhandler will blink LED 7 rapidly for a couple of seconds and then it
     will blink slowly for the following codes:
-    * 1 blink - not associated with an access point (check SSID/passphrase)
-    * 2 blinks - cannot connect to the exosite server (check Internet connection)
-    * 3 blinks - cannot write (check signal strength / distance from AP)
-    * 4 blinks - communiations the SPI module experience error, retry
-    * 5 blinks - rare race condition experienced, retry
+-)* 1 blink - not associated with an access point (check SSID/passphrase)
+-)* 2 blinks - cannot connect to the exosite server (check Internet connection)
+-)* 3 blinks - cannot write (check signal strength / distance from AP)
+-)* 4 blinks - communiations the SPI module experience error, retry
+-)* 5 blinks - rare race condition experienced, retry
 
 ================================================================================
 Release Info
