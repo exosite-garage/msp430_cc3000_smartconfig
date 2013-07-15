@@ -274,7 +274,8 @@ Exosite_Activate(void)
     status_code = EXO_STATUS_INIT;
     return newcik;
   }
-  update_m2ip();        //check our IP api to see if the old IP is advertising a new one
+  //update_m2ip();        //check our IP api to see if the old IP is advertising a new one
+  //exoHAL_Updatm2ip();
 
   long sock = connect_to_exosite();
   if (sock < 0) {
@@ -331,10 +332,15 @@ Exosite_Activate(void)
         {
           crlf = 0;
           // check the cik length from http response
-          if ('g' == *p) // Find 'g'th:
-            cik_ctrl++;
-          if (cik_ctrl > 0 && ('4' == *p || '0' == *p))
-            cik_len_valid++;
+            if(cik_ctrl == 0 && 'L'== *p)
+              cik_ctrl = 1;
+            else if (cik_ctrl == 3 && 'g' == *p)    // Find Len'g'th:
+              cik_ctrl += 1;
+            else if (cik_ctrl >= 1 && cik_ctrl < 3)
+              cik_ctrl++;
+
+            if (cik_ctrl == 4 && ('4' == *p || '0' == *p))
+              cik_len_valid++;
         }
         ++p;
         --len;
