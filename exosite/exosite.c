@@ -351,7 +351,7 @@ Exosite_Activate(void)
       {
         // TODO, be more robust - match Content-Length header value to CIK_LENGTH
         unsigned char need, part;
-        if (!(cik_len_valid == 2)) // cik length != 40
+        if (!(cik_len_valid == 3)) // cik length != 40
         {
           status_code = EXO_STATUS_CONFLICT;
           return newcik;
