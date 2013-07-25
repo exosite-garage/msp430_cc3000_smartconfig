@@ -269,6 +269,8 @@ Exosite_Activate(void)
   char temp[5];
   int newcik = 0;
   int http_status = 0;
+  char cmp_ss[18] = "Content-Length: 40";
+  char *cmp = cmp_ss;
 
   if (!exosite_initialized) {
     status_code = EXO_STATUS_INIT;
@@ -324,14 +326,22 @@ Exosite_Activate(void)
       // Find 4 consecutive \r or \n - should be: \r\n\r\n
       while (0 < len && 4 > crlf)
       {
-        if ('\r' == *p || '\n' == *p)
-        {
-          ++crlf;
-        }
-        else
-        {
-          crlf = 0;
-        }
+
+   	    if ('\r' == *p || '\n' == *p)
+    	  ++crlf;
+    	else
+    	{
+    	  crlf = 0;
+          if (*cmp == *p)
+          {
+            // check the cik length from http response
+            cmp++;
+            if (cmp > &cmp_ss[17])// + strlen(cmp_ss))
+          	cik_len_valid = 1;
+          }
+          else
+            cmp = cmp_ss;
+    	}
         ++p;
         --len;
       }
@@ -341,6 +351,12 @@ Exosite_Activate(void)
       {
         // TODO, be more robust - match Content-Length header value to CIK_LENGTH
         unsigned char need, part;
+        if (!(cik_len_valid == 1)) // cik length != 40
+        {
+          status_code = EXO_STATUS_CONFLICT;
+          exoHAL_SocketClose(sock);
+          return newcik;
+        }
         need = CIK_LENGTH - ciklen;
         part = need < len ? need : len;
         strncpy(NCIK + ciklen, p, part);
