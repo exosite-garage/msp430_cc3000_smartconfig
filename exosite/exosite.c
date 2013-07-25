@@ -331,16 +331,6 @@ Exosite_Activate(void)
         else
         {
           crlf = 0;
-          // check the cik length from http response
-            if(cik_ctrl == 0 && 'L'== *p)
-              cik_ctrl = 1;
-            else if (cik_ctrl == 3 && 'g' == *p)    // Find Len'g'th:
-              cik_ctrl += 1;
-            else if (cik_ctrl >= 1 && cik_ctrl < 3)
-              cik_ctrl++;
-
-            if (cik_ctrl == 4 && ('4' == *p || '0' == *p))
-              cik_len_valid++;
         }
         ++p;
         --len;
@@ -351,11 +341,6 @@ Exosite_Activate(void)
       {
         // TODO, be more robust - match Content-Length header value to CIK_LENGTH
         unsigned char need, part;
-        if (!(cik_len_valid == 3)) // cik length != 40
-        {
-          status_code = EXO_STATUS_CONFLICT;
-          return newcik;
-        }
         need = CIK_LENGTH - ciklen;
         part = need < len ? need : len;
         strncpy(NCIK + ciklen, p, part);
