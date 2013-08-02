@@ -1,8 +1,8 @@
 About MSP430 FRAM CC3000 Smart Config Sensor Cloud
 ================================================================================
 This project is an embedded software project meant to run on the Texas
-Instruments MSP430 FRAM development kit to demonstrate sending sensor data
-to the cloud over CC3000 WiFi.
+Instruments MSP430 FRAM development kit to demonstrate sending & receiving data
+to & from the cloud over CC3000 WiFi.
 
 The project functionality includes:
 
@@ -26,28 +26,31 @@ Tested with:
   muRata CC3000 module - LBWA1ZZVK7 Rev 2.0
 
 ================================================================================
-Quick Start
+Quick Start (Program Kit with Binary Image and Get Running in 5 Minutes)
 ================================================================================   
 1) Download the repository containing this readme file (msp430_cc3000_smartconfig) 
    and extract to a folder of your choosing
 
-2) Go to the folder flashtool and install the flashtool.msi
+2) Go to the folder "flashtool" and install the applicaiton "flashtool.msi"
 
 3) Attach the FRAM board to your PC via the mini-USB connector, make sure the CC3000 module is on the devkit
 
-4) If you never update the CC3000 driver patch, open Start -> All Programs -> flashtool, then run download_cc3000_patch_programmer_driver
+4) If you have never updated the CC3000's driver patch, open Start -> All Programs -> flashtool, and run "download_cc3000_patch_programmer_driver"
 
-5) If you never update the CC3000 firmware patch, Open Start -> All Programs -> flashtool, then run download_cc3000_patch_programmer_firmware
+5) If you have never updated the CC3000's firmware patch, Open Start -> All Programs -> flashtool, and run "download_cc3000_patch_programmer_firmware"
 
-6) Open Start -> All Programs -> flashtool, then run download_exosite_demo
+6) Open Start -> All Programs -> flashtool, and run "download_exosite_demo"
 
-7) Open a browser and go to https://ti.exosite.com and sign-up if you don't
-   already have an account
+7) Open a browser and go to https://ti.exosite.com .  Login or sign-up (if you don't
+   already have an account)
    
-8) In the TI Portal, add a new MSP430 + CC3000 device, enter the MAC address from the sticker on the WiFi module.
+8) In the TI Portal, add a new MSP430 + CC3000 device, and enter the MAC address from the sticker on the WiFi module.
 
-9) Press S1 until LED6 starts blinking. Refer http://processors.wiki.ti.com/index.php/CC3000_Wi-Fi_MSP430_FRAM_Getting_Started_Guide_Using_Smart_Config
-    to config WiFi AP.
+9) In order to pair the device with your WiFi Access Point, press and hold S1 
+   until LED6 starts blinking (this enters Smart Config mode).  You will need
+   to follow the instructions at http://processors.wiki.ti.com/index.php/CC3000_Wi-Fi_MSP430_FRAM_Getting_Started_Guide_Using_Smart_Config
+   to download and install an application for iOS or Android to configure the 
+   CC3000.  This only needs to be done once for a given Access Point.
 
 10) Verify LED1, followed by LED2, LED3 and finally LED4 all come on
 - LED1 is a "communications with WiFi module is working" indicator
@@ -81,20 +84,20 @@ Release Info
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Release 2013-07-31
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
---) Add flash tool to update fireware
+--) Added flash tool to update firmware from binary files
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Release 2013-07-15
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
---) Update HTTP response parsing in device activation function.
+--) Updated HTTP response parsing in the device activation function.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Release 2013-06-10
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
---) Update CC3000 host driver and reduce stack usage in Exosite library.
+--) Updated CC3000 host driver and reduce stack usage in Exosite library.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Release 2013-05-06
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
---) Add WDT and update CC3000 patch program
+--) Added WDT and update CC3000 patch program
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Release 2013-03-06
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
---) initial release
+--) Initial release
